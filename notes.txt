@@ -1,0 +1,11 @@
+yum install geany
+
+yum install pygtk2 pygtk2-devel
+yum install glade
+
+# For Oly's geany-project-manager
+yum install python-eventlet python-psycopg2
+
+
+cd {project-tree directory itself}
+ln -s `pwd` ~/.config/geany/plugins/geanypy/plugins/
