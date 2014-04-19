@@ -18,7 +18,13 @@ TODO:
 Click on tree title should bring up ...
 
 DONE  Need to detect whether start directory contains a .geany/ folder
-Load project_sample.ini file if it's in .geany
+DONE  Load project_sample.ini file if it's in .geany
+Enable clicking on a file to open it in editor
+
+Add current file to end of list (menu_empty)
+Add current file to end of group (menu_group)
+Add current file after this one (menu_file)
+
 
 If no .geany/, offer to create one
 

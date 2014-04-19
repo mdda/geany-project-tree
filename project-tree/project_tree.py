@@ -1,4 +1,5 @@
 import os, sys
+import re
 import shutil
 import gtk, glib
 import gobject
@@ -68,7 +69,7 @@ class ProjectTree(geany.Plugin):
         ## Right-Click menu : group : AddGroup, RemoveGroup, RenameGroup, AddCurrentFile
         self.menu_group_fill()
 
-        self.treemodel= gtk.TreeStore(gobject.TYPE_STRING)
+        self.treemodel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
         #setup treeview and treestore model
         #self.treemodel.connect("cursor-changed", self.populate_treeview)
         
@@ -189,57 +190,53 @@ class ProjectTree(geany.Plugin):
         #self.detector=detect()
         
         
-    def _load_project_tree(self, file):
-        with open(file) as f:
+    def _load_project_tree(self, config_file):
+        with open(config_file) as fin:
             config = ConfigParser.SafeConfigParser()
-            config.readfp(f)
+            config.readfp(fin)
             #print "Sections", config.sections()
             if config.has_section('.'):
                 print "Got Root!"
-                for k,v in config.items('.'):
-                    print "('%s', '%s')" % (k, v)
+                self.treemodel.clear()
+                self._load_project_tree_branch(config, '.', None)
+                
+                            
+    def _load_project_tree_branch(self, config, section, parent):
+        ## Create a nice dictionary of stuff from this section - each integer(sorted) can contain several entries
+        key_matcher = re.compile("(\d+)-?(\S*)")
+        d=dict()
+        for k,v in config.items(section):
+            print "('%s', '%s')" % (k, v)
+            m = key_matcher.match(k)
+            if m:
+                order = int(m.group(1))
+                if order not in d:
+                    d[order]=dict()
+                d[order][m.group(2)] = v
             
+        for k,vd in sorted(d.iteritems()):  # Here, vd is dictionary of data about each 'k' item
+            if '' in vd: # This is a file (the default ending)
+                print "Got a file"
+                f = vd['']
+                ## Add the file to the tree
+                #iter = self.treemodel.insert_after(None,None)
+                #self.treemodel.set_value(iter, 0, os.path.basename(f))
+                #self.treemodel.set_value(iter, 1, f)
+                
+                iter = self.treemodel.append(parent, (os.path.basename(f), f))
+                # No need to store this 'iter' - can easily append after
+                
+            else:  # This is something special
+                if 'group' in vd:
+                    g = vd['group']
+                    print "Got a group : %s" % (g,)
+                    ## Add the  group to the tree, and recursively go after that section...
+                    iter = self.treemodel.append(parent, (g, g))
+                    ### Descend with parent=iter
+                    self._load_project_tree_branch(config, section+'/'+g, iter)
+                    
         
-        
-    def xpopulate_treeview_children(self, parent, clear=True, match=None):
-        #print 'populate_treeview_children '+str(parent)
-        remove_treeiter = self.treeview_get_children(parent)
 
-        path = self.treemodel.get_path(parent)
-        if not path:
-            return None
-
-        filepath=self.get_treeview_path(path)+os.sep
-
-        for filename in self.listdir_sort(filepath):
-            path=filepath+filename
-            if not self.is_allowed_file(filename):
-                continue
-            treeiter = self.append_treeview(self.treemodel, parent, filename, os.path.isdir(path))
-
-            #list files under current path and populate folders, so we get expand markers
-            if os.path.isdir(path):
-                for filename3 in self.listdir_sort(path):
-                    path+=filename3
-                    if self.is_allowed_file(filename3):
-                        self.append_treeview(self.treemodel, treeiter, filename3, os.path.isdir(path))
-
-            if filename == self.selected_filename:
-                treeselection = self.treeview.get_selection()
-                treeselection.select_path(self.treemodel.get_path(treeiter))
-                self.treeview.scroll_to_cell(self.treemodel.get_path(treeiter))
-
-        for treeiter in remove_treeiter:
-            if treeiter:
-                self.treemodel.remove(treeiter)
-
-    def xpopulate_treeview(self,path=None):
-        self.treemodel.clear()
-        for path in self.root_folders:
-            filename = os.path.dirname(path)
-            treeview_node = self.append_treeview(self.treemodel, None, path)
-            self.append_treeview_children(treeview_node, path)
-            
     def _menu_item_add_connected(self, menu, title, action):
         menu_item = gtk.MenuItem(title)
         menu_item.connect("activate", action)
