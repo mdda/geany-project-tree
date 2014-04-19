@@ -6,6 +6,34 @@ yum install glade
 # For Oly's geany-project-manager
 yum install python-eventlet python-psycopg2
 
+# For project-tree
+## yum install PyYAML  ## No need - ConfigParser is in standard libraries
 
-cd {project-tree directory itself}
-ln -s `pwd` ~/.config/geany/plugins/geanypy/plugins/
+cd {project-tree main directory itself from git}
+ln -s `pwd`/project-tree ~/.config/geany/plugins/geanypy/plugins/
+
+
+TODO: 
+
+Click on tree title should bring up ...
+
+DONE  Need to detect whether start directory contains a .geany/ folder
+Load project_sample.ini file if it's in .geany
+
+If no .geany/, offer to create one
+
+If no .geany/, recurse upwards until {find a .git folder}
+If .geany found, load a project.ini file (might be added to git)
+If .geany found, load a session.ini file (probably not added to git)
+Session stores open files
+Session stores open leaves in project tree
+Save session on close?
+Save project on close?
+
+Ask about .geany path : GtkWidget* ui_path_box_new	(	const gchar * 	title, GtkFileChooserAction 	action, GtkEntry * 	entry )		
+
+
+Load session_default.ini file if it's in .geany and no session.ini exists
+
+Goto correct line upon session load  : gboolean 	editor_goto_pos (GeanyEditor *editor, gint pos, gboolean mark)
+geany initial path : GeanyDocument * 	document_get_current (void)

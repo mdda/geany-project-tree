@@ -4,7 +4,7 @@ import gtk, glib
 import gobject
 import geany
 
-from ConfigParser import SafeConfigParser
+import ConfigParser
 from datetime import datetime
 
 sys.path.append(os.path.dirname(__file__))
@@ -22,17 +22,25 @@ class ProjectTree(geany.Plugin):
 
     plugin_root = os.path.dirname(__file__)
     widget_destroy_stack = []
+    
+    config_base_directory = None
+    config_sub_directory = ".geany"
+    
+    config_project_file  = "project.ini"
+    config_project_file_readonly = "project_sample.ini"
+    config_session_file  = "session.ini"
+    config_session_file_initial  = "session_default.ini"
 
     #use this to decide what items to show in the menu when right clicking
-    current_treedepth=0
-    root_folders=[]
+    #current_treedepth=0
+    #root_folders=[]
     #root_folders=['/var/www/',os.path.expanduser('~/')+'Ubuntu One/python/']
 
-    selected_filename = None
-    selected_fullpath = None
-    selected_filepath = None
-    selected_treeiter = None
-    selected_project_folder = None
+    #selected_filename = None
+    #selected_fullpath = None
+    #selected_filepath = None
+    #selected_treeiter = None
+    #selected_project_folder = None
 
     #configuration = config_handler(geany.general_prefs.default_open_path)
     #database = mysql_handler(geany.general_prefs.default_open_path)
@@ -60,8 +68,8 @@ class ProjectTree(geany.Plugin):
         ## Right-Click menu : group : AddGroup, RemoveGroup, RenameGroup, AddCurrentFile
         self.menu_group_fill()
 
-        #setup treeview and treestore model
         self.treemodel= gtk.TreeStore(gobject.TYPE_STRING)
+        #setup treeview and treestore model
         #self.treemodel.connect("cursor-changed", self.populate_treeview)
         
         self.treeview = gtk.TreeView(self.treemodel)
@@ -146,26 +154,104 @@ class ProjectTree(geany.Plugin):
 
         #self.get_languages()
         #self.cfg.load_config()
-        self.populate_treeview()
+        
+        ## Apparently, get_current document not loaded by the time plugin is starting
+        #doc=geany.document.get_current()
+        #if doc is not None:
+        #    print "geany launch document: %s" % (doc.real_path, )
+        
+        ## Apparently, this isn't necessarily a sensible value
+        #print "geany.general_prefs.default_open_path=%s" % (geany.general_prefs.default_open_path, )
+        
+        ## Attempt to see .geany directory here
+        if self.config_base_directory is None:
+            #print "os.getcwd()=%s" % (os.getcwd(),)
+            directory = os.getcwd()
+            directory_geany = os.path.join(directory, self.config_sub_directory, )
+            if os.path.isdir(directory_geany):
+                self.config_base_directory=directory
+            else:
+                ## recurse, search for .git, etc
+                # ...
+                ## Finally : prompt for base directory for .geany file
+                pass
+        
+        if self.config_base_directory is not None:
+            ## Load in self.config_project_file_readonly
+            project_config_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_project_file_readonly)
+            self._load_project_tree(project_config_ini)
+            
+        
+        ## TODO ::
+        #self.populate_treeview()
 
         geany.signals.connect('document-activate', self.document_changed)
         #self.detector=detect()
+        
+        
+    def _load_project_tree(self, file):
+        with open(file) as f:
+            config = ConfigParser.SafeConfigParser()
+            config.readfp(f)
+            #print "Sections", config.sections()
+            if config.has_section('.'):
+                print "Got Root!"
+                for k,v in config.items('.'):
+                    print "('%s', '%s')" % (k, v)
+            
+        
+        
+    def xpopulate_treeview_children(self, parent, clear=True, match=None):
+        #print 'populate_treeview_children '+str(parent)
+        remove_treeiter = self.treeview_get_children(parent)
 
+        path = self.treemodel.get_path(parent)
+        if not path:
+            return None
 
+        filepath=self.get_treeview_path(path)+os.sep
+
+        for filename in self.listdir_sort(filepath):
+            path=filepath+filename
+            if not self.is_allowed_file(filename):
+                continue
+            treeiter = self.append_treeview(self.treemodel, parent, filename, os.path.isdir(path))
+
+            #list files under current path and populate folders, so we get expand markers
+            if os.path.isdir(path):
+                for filename3 in self.listdir_sort(path):
+                    path+=filename3
+                    if self.is_allowed_file(filename3):
+                        self.append_treeview(self.treemodel, treeiter, filename3, os.path.isdir(path))
+
+            if filename == self.selected_filename:
+                treeselection = self.treeview.get_selection()
+                treeselection.select_path(self.treemodel.get_path(treeiter))
+                self.treeview.scroll_to_cell(self.treemodel.get_path(treeiter))
+
+        for treeiter in remove_treeiter:
+            if treeiter:
+                self.treemodel.remove(treeiter)
+
+    def xpopulate_treeview(self,path=None):
+        self.treemodel.clear()
+        for path in self.root_folders:
+            filename = os.path.dirname(path)
+            treeview_node = self.append_treeview(self.treemodel, None, path)
+            self.append_treeview_children(treeview_node, path)
+            
+    def _menu_item_add_connected(self, menu, title, action):
+        menu_item = gtk.MenuItem(title)
+        menu_item.connect("activate", action)
+        menu_item.show()
+        menu.append(menu_item)
+    
     def menu_empty_fill(self):
-        ## Click menu : empty space : AddGroup, AddCurrentFile
+        ## Right-Click menu : empty space : AddGroup, AddCurrentFile
         menu = gtk.Menu()
-        
-        menu_item = gtk.MenuItem("Add Group")
-        menu_item.connect("activate", self.tree_add_group)
-        menu_item.show()
-        menu.append(menu_item)
-        
-        menu_item = gtk.MenuItem("Add Current File")
-        menu_item.connect("activate", self.tree_add_current_file)
-        menu_item.show()
-        menu.append(menu_item)
-        
+        self._menu_item_add_connected(menu, "TEST", self.menu_empty_action_test)
+        self._menu_item_add_connected(menu, "Add Group", self.tree_add_group)
+        self._menu_item_add_connected(menu, "Add Current File", self.tree_add_current_file)
         self.menu_empty = menu
 
     def menu_file_fill(self):
@@ -179,7 +265,32 @@ class ProjectTree(geany.Plugin):
         menu = gtk.Menu()
         
         self.menu_group = menu
+
+
+    def menu_empty_action_test(self, *args):
+        entry = gtk.Entry()
+        entry.set_text(os.getcwd())
+        prompt = geany.ui_utils.path_box_new(None, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, entry)
+
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                    gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, 
+                                    "Base Path for Project-Tree configuration directory")
+        dialog.vbox.pack_end(prompt, True, True, 0)
+        dialog.show_all()
         
+        response = dialog.run()
+        path = entry.get_text()
+        dialog.hide_all()
+        if response == gtk.RESPONSE_OK:
+            if len(path)>0:
+                print "RETVAL_OK = " + path
+            else:
+                print "Too Short"
+        else:
+            print "RETVAL ignored"
+    
+
+
     def tree_add_group(self, *args):
         print "tree_add_group"
         
@@ -429,17 +540,17 @@ class ProjectTree(geany.Plugin):
         tree_selection=tv.get_selection()
         treestore, path = tree_selection.get_selected_rows()
         
-        #print "len(path)=%d" % (len(path),)
-        if len(path)>0:  # Something actually clicked on
-            filepath = self.get_treeview_path(path[0])
-            if event.button == 3:  # Right click
+        if event.button == 3:  # Right click
+            #print "len(path)=%d" % (len(path),)
+            if len(path)>0:  # Something actually clicked on
+                filepath = self.get_treeview_path(path[0])
                 self.show_popup_menu(filepath, path[0])
-        else:
-            # Empty space clicked on : Don't care which button
-            #self.show_popup_menu('asdasd', 'tyrtrtyy')
-            print "Popup menu_empty"
-            self.menu_empty.show()
-            self.menu_empty.popup(None,None,None,1,0)
+            else:
+                # Empty space clicked on : Don't care which button
+                #self.show_popup_menu('asdasd', 'tyrtrtyy')
+                print "Popup menu_empty"
+                self.menu_empty.show()
+                self.menu_empty.popup(None,None,None,1,0)
 
     def fake_menu(self,*args):
         pass
