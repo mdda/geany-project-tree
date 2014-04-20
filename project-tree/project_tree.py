@@ -54,109 +54,99 @@ class ProjectTree(geany.Plugin):
     def __init__(self):
         self.clipboard=gtk.clipboard_get()
 
-        #setup right click popup menus
-        #self.menu = gtk.Menu()
-        #self.menu_project()
-        #self.menu_folders()
-        #self.menu_files()
+        if True:  ## Set up the pop-up menus
+            ## Click menu : empty space : AddGroup, AddCurrentFile
+            self.menu_empty_fill()
+            
+            ## Right-Click menu : file  : AddGroup, AddCurrentFile, RemoveFile
+            self.menu_file_fill()
+            
+            ## Right-Click menu : group : AddGroup, RemoveGroup, RenameGroup, AddCurrentFile
+            self.menu_group_fill()
+            
+            self.widget_destroy_stack.extend([self.menu_empty, self.menu_file, self.menu_group, ])
+
+        if True:  ## Set up a reusable, generic question/answer dialog box
+            # gtk.BUTTONS_YES_NO
+            self.dialog_confirm = gtk.MessageDialog(None,gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,gtk.MESSAGE_QUESTION,gtk.BUTTONS_YES_NO,None)
+            self.dialog_input   = gtk.MessageDialog(None,gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,gtk.MESSAGE_QUESTION,gtk.BUTTONS_OK,None)
+            self.dialog_input_entry = gtk.Entry()
+            
+            hbox = gtk.HBox()
+            hbox.pack_start(gtk.Label("Name:"), False, 5, 5)
+            hbox.pack_end(self.dialog_input_entry)
+            self.dialog_input.vbox.pack_end(hbox, True, True, 0)
         
-        ## Click menu : empty space : AddGroup, AddCurrentFile
-        self.menu_empty_fill()
-        
-        ## Right-Click menu : file  : AddGroup, AddCurrentFile, RemoveFile
-        self.menu_file_fill()
-        
-        ## Right-Click menu : group : AddGroup, RemoveGroup, RenameGroup, AddCurrentFile
-        self.menu_group_fill()
+            self.widget_destroy_stack.extend([self.dialog_input, ])
+            
+        if True:  ## Set up the side-bar
+            self.treemodel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+            #setup treeview and treestore model
+            #self.treemodel.connect("cursor-changed", self.populate_treeview)
+            
+            self.treeview = gtk.TreeView(self.treemodel)
 
-        self.treemodel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
-        #setup treeview and treestore model
-        #self.treemodel.connect("cursor-changed", self.populate_treeview)
-        
-        self.treeview = gtk.TreeView(self.treemodel)
+            self.treeview.connect('row-activated', self.on_selection)
+            self.treeview.connect("row-expanded", self.on_expand_treeview)
+            self.treeview.connect('button_press_event', self.treeview_menu)
+            #self.treeview.set_headers_visible(True)
+            self.treeview.set_headers_visible(False)
 
-        self.treeview.connect('row-activated', self.on_selection)
-        self.treeview.connect("row-expanded", self.on_expand_treeview)
-        self.treeview.connect('button_press_event', self.treeview_menu)
-        self.treeview.set_headers_visible(True)
-        #self.treeview.set_headers_visible(False)
+            #~ fontT = pango.FontDescription("serif light Oblique 8")
+            #~ fontO = pango.FontDescription("serif bold 8")
+            #~ treeView.cell[2].set_property('font-desc', fontT)
+            #~ treeView.cell[3].set_property('font-desc', fontO)
 
-        #~ fontT = pango.FontDescription("serif light Oblique 8")
-        #~ fontO = pango.FontDescription("serif bold 8")
-        #~ treeView.cell[2].set_property('font-desc', fontT)
-        #~ treeView.cell[3].set_property('font-desc', fontO)
+            #column1.pack_start(text_renderer, False)
+            #column1.set_resizable(False)
 
-        #column1.pack_start(text_renderer, False)
-        #column1.set_resizable(False)
+            pix_renderer = gtk.CellRendererPixbuf()
+            text_renderer= gtk.CellRendererText()
 
-        pix_renderer = gtk.CellRendererPixbuf()
-        text_renderer= gtk.CellRendererText()
+            column1=gtk.TreeViewColumn("Tree Layout Options", text_renderer, text=0)
+            #column1.set_title('Icons & Text')
+            ## This is for setting an icon - which we won't be showing anyway
+            #column1.set_cell_data_func(pix_renderer, self.render_icon_remote)
 
-        column1=gtk.TreeViewColumn("Tree Layout Options", text_renderer, text=0)
-        #column1.set_title('Icons & Text')
-        ## This is for setting an icon - which we won't be showing anyway
-        #column1.set_cell_data_func(pix_renderer, self.render_icon_remote)
+            #column1.add_attribute(pix_renderer, 'pixbuf', 0)
+            #column1.set_attributes(pix_renderer, text=0)
+            #column1.pack_start(pix_renderer, True)
 
-        #column2=gtk.TreeViewColumn("Project List",pix_renderer,text=1)
-        #column2.set_resizable(True)
-        #column2.pack_start(pix_renderer,True)
+            ## Unnecessary?
+            #column1.add_attribute(text_renderer, 'text', 0)
+            #column1.set_attributes(text_renderer, text=0)
+            #column1.pack_start(text_renderer, True)
 
-        #column1.add_attribute(pix_renderer, 'pixbuf', 0)
-        #column1.set_attributes(pix_renderer, text=0)
-        #column1.pack_start(pix_renderer, True)
+            #column2=gtk.TreeViewColumn("Project List",pix_renderer,text=1)
+            #column2.set_resizable(True)
+            #column2.pack_start(pix_renderer,True)
 
-        ## Unnecessary?
-        #column1.add_attribute(text_renderer, 'text', 0)
-        #column1.set_attributes(text_renderer, text=0)
-        #column1.pack_start(text_renderer, True)
+            self.treeview.append_column(column1)
+            #self.treeview.append_column(column2)
+            self.treeview.show()
 
-        self.treeview.append_column(column1)
+            #put treeview in a scrolled window so we can move up and down with a scrollbar
+            self.scrolledwindow=gtk.ScrolledWindow()
+            self.scrolledwindow.add(self.treeview)
+            self.scrolledwindow.show()
 
-        #self.treeview.append_column(column2)
-        self.treeview.show()
+            #homogeneous = False, spacing = 0
+            box = gtk.VBox(False, 0)
+            ##expand, fill, padding
+            box.pack_start(self.scrolledwindow, True, True, 0)
+            box.show()
+            
+            label = gtk.Label("ProjectTree")
+            
+            geany.main_widgets.sidebar_notebook.append_page(box, label)
+            #geany.main_widgets.message_window_notebook.append_page(self.database.gui, labelMYSQL)
+            #self.browser.browser_tab = geany.main_widgets.message_window_notebook.append_page(self.browser.gui, labelBrowser)
+            #geany.main_widgets.message_window_notebook.append_page(self.sftp.gui, labelSFTP)
 
-        #put treeview in a scrolled window so we can move up and down with a scrollbar
-        self.scrolledwindow=gtk.ScrolledWindow()
-        self.scrolledwindow.add(self.treeview)
-        self.scrolledwindow.show()
+            # keep track of widgets to destroy in plugin_cleanup()
+            self.widget_destroy_stack.extend([box, label, ])
 
-        #homogeneous = False, spacing = 0
-        box = gtk.VBox(False, 0)
-        ##expand, fill, padding
-        box.pack_start(self.scrolledwindow, True, True, 0)
-        box.show()
-
-        # gtk.BUTTONS_YES_NO
-        self.dialog_confirm = gtk.MessageDialog(None,gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,gtk.MESSAGE_QUESTION,gtk.BUTTONS_YES_NO,None)
-        self.dialog_input   = gtk.MessageDialog(None,gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,gtk.MESSAGE_QUESTION,gtk.BUTTONS_OK,None)
-        self.dialog_input_entry = gtk.Entry()
-        
-        hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label("Name:"), False, 5, 5)
-        hbox.pack_end(self.dialog_input_entry)
-        self.dialog_input.vbox.pack_end(hbox, True, True, 0)
-
-        label = gtk.Label("ProjectTree")
-        #labelMYSQL = gtk.Label("MySQL")
-        #labelSFTP = gtk.Label("SFTP")
-        #labelBrowser = gtk.Label("Browser")
-        geany.main_widgets.sidebar_notebook.append_page(box, label)
-        #geany.main_widgets.message_window_notebook.append_page(self.database.gui, labelMYSQL)
-        #self.browser.browser_tab = geany.main_widgets.message_window_notebook.append_page(self.browser.gui, labelBrowser)
-        #geany.main_widgets.message_window_notebook.append_page(self.sftp.gui, labelSFTP)
-
-        # keep track of widgets to destroy in plugin_cleanup()
-        #self.widget_destroy_stack.extend([self.menu, box, self.dialog_input,])
-        self.widget_destroy_stack.extend([box, self.dialog_input, self.menu_empty, self.menu_file, self.menu_group, ])
-
-        ##determine the path of this plugin so we can scan for snippets
-        #self.path,filename=os.path.split(__file__)
-        #self.path+='/snippets/'
-
-        #self.get_languages()
-        #self.cfg.load_config()
-        
-        ## Apparently, get_current document not loaded by the time plugin is starting
+        ## Apparently, get_current document not loaded at the time plugin is starting
         #doc=geany.document.get_current()
         #if doc is not None:
         #    print "geany launch document: %s" % (doc.real_path, )
@@ -182,10 +172,10 @@ class ProjectTree(geany.Plugin):
             project_config_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_project_file_readonly)
             self._load_project_tree(project_config_ini)
             
+            ## Load in session information
+            ## TODO
+            pass
         
-        ## TODO ::
-        #self.populate_treeview()
-
         geany.signals.connect('document-activate', self.document_changed)
         #self.detector=detect()
         
