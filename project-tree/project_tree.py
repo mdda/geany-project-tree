@@ -31,6 +31,9 @@ class ProjectTree(geany.Plugin):
     config_project_file_readonly = "project_sample.ini"
     config_session_file  = "session.ini"
     config_session_file_initial  = "session_default.ini"
+    
+    TREEVIEW_VISIBLE_TEXT_COL = 0
+    TREEVIEW_HIDDEN_TEXT_COL = 1
 
     #use this to decide what items to show in the menu when right clicking
     #current_treedepth=0
@@ -66,10 +69,10 @@ class ProjectTree(geany.Plugin):
             
             self.widget_destroy_stack.extend([self.menu_empty, self.menu_file, self.menu_group, ])
 
-        if True:  ## Set up a reusable, generic question/answer dialog box
-            # gtk.BUTTONS_YES_NO
-            self.dialog_confirm = gtk.MessageDialog(None,gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,gtk.MESSAGE_QUESTION,gtk.BUTTONS_YES_NO,None)
-            self.dialog_input   = gtk.MessageDialog(None,gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,gtk.MESSAGE_QUESTION,gtk.BUTTONS_OK,None)
+        if True:  ## Set up a reusable, generic question/answer dialog box and a confirmation box
+            self.dialog_confirm = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, None)
+            
+            self.dialog_input   = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK,     None)
             self.dialog_input_entry = gtk.Entry()
             
             hbox = gtk.HBox()
@@ -77,7 +80,7 @@ class ProjectTree(geany.Plugin):
             hbox.pack_end(self.dialog_input_entry)
             self.dialog_input.vbox.pack_end(hbox, True, True, 0)
         
-            self.widget_destroy_stack.extend([self.dialog_input, ])
+            self.widget_destroy_stack.extend([self.dialog_input, self.dialog_confirm, ])
             
         if True:  ## Set up the side-bar
             self.treemodel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
@@ -85,10 +88,12 @@ class ProjectTree(geany.Plugin):
             #self.treemodel.connect("cursor-changed", self.populate_treeview)
             
             self.treeview = gtk.TreeView(self.treemodel)
+            self.treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
 
-            self.treeview.connect('row-activated', self.on_selection)
-            self.treeview.connect("row-expanded", self.on_expand_treeview)
-            self.treeview.connect('button_press_event', self.treeview_menu)
+            self.treeview.connect('row-activated', self.treeview_row_activated)
+            #self.treeview.connect('select-cursor-row', self.treeview_select_cursor_row)
+            #self.treeview.connect("row-expanded", self.treeview_row_expanded)
+            self.treeview.connect('button_press_event', self.treeview_button_press_event)
             #self.treeview.set_headers_visible(True)
             self.treeview.set_headers_visible(False)
 
@@ -97,32 +102,32 @@ class ProjectTree(geany.Plugin):
             #~ treeView.cell[2].set_property('font-desc', fontT)
             #~ treeView.cell[3].set_property('font-desc', fontO)
 
-            #column1.pack_start(text_renderer, False)
-            #column1.set_resizable(False)
+            #column0.pack_start(text_renderer, False)
+            #column0.set_resizable(False)
 
             pix_renderer = gtk.CellRendererPixbuf()
             text_renderer= gtk.CellRendererText()
 
-            column1=gtk.TreeViewColumn("Tree Layout Options", text_renderer, text=0)
-            #column1.set_title('Icons & Text')
+            column0=gtk.TreeViewColumn("Tree Layout Options", text_renderer, text=0)
+            #column0.set_title('Icons & Text')
             ## This is for setting an icon - which we won't be showing anyway
-            #column1.set_cell_data_func(pix_renderer, self.render_icon_remote)
+            #column0.set_cell_data_func(pix_renderer, self.render_icon_remote)
 
-            #column1.add_attribute(pix_renderer, 'pixbuf', 0)
-            #column1.set_attributes(pix_renderer, text=0)
-            #column1.pack_start(pix_renderer, True)
+            #column0.add_attribute(pix_renderer, 'pixbuf', 0)
+            #column0.set_attributes(pix_renderer, text=0)
+            #column0.pack_start(pix_renderer, True)
 
             ## Unnecessary?
-            #column1.add_attribute(text_renderer, 'text', 0)
-            #column1.set_attributes(text_renderer, text=0)
-            #column1.pack_start(text_renderer, True)
+            #column0.add_attribute(text_renderer, 'text', 0)
+            #column0.set_attributes(text_renderer, text=0)
+            #column0.pack_start(text_renderer, True)
 
-            #column2=gtk.TreeViewColumn("Project List",pix_renderer,text=1)
-            #column2.set_resizable(True)
-            #column2.pack_start(pix_renderer,True)
+            #column1=gtk.TreeViewColumn("Project List",pix_renderer,text=1)
+            #column1.set_resizable(True)
+            #column1.pack_start(pix_renderer,True)
 
-            self.treeview.append_column(column1)
-            #self.treeview.append_column(column2)
+            self.treeview.append_column(column0)
+            #self.treeview.append_column(column1)
             self.treeview.show()
 
             #put treeview in a scrolled window so we can move up and down with a scrollbar
@@ -146,35 +151,37 @@ class ProjectTree(geany.Plugin):
             # keep track of widgets to destroy in plugin_cleanup()
             self.widget_destroy_stack.extend([box, label, ])
 
-        ## Apparently, get_current document not loaded at the time plugin is starting
-        #doc=geany.document.get_current()
-        #if doc is not None:
-        #    print "geany launch document: %s" % (doc.real_path, )
-        
-        ## Apparently, this isn't necessarily a sensible value
-        #print "geany.general_prefs.default_open_path=%s" % (geany.general_prefs.default_open_path, )
-        
-        ## Attempt to see .geany directory here
-        if self.config_base_directory is None:
-            #print "os.getcwd()=%s" % (os.getcwd(),)
-            directory = os.getcwd()
-            directory_geany = os.path.join(directory, self.config_sub_directory, )
-            if os.path.isdir(directory_geany):
-                self.config_base_directory=directory
-            else:
-                ## recurse, search for .git, etc
-                # ...
-                ## Finally : prompt for base directory for .geany file
-                pass
-        
-        if self.config_base_directory is not None:
-            ## Load in self.config_project_file_readonly
-            project_config_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_project_file_readonly)
-            self._load_project_tree(project_config_ini)
+
+        if True:  ## Load in configuration
+            ## Apparently, get_current document not loaded at the time plugin is starting
+            #doc=geany.document.get_current()
+            #if doc is not None:
+            #    print "geany launch document: %s" % (doc.real_path, )
             
-            ## Load in session information
-            ## TODO
-            pass
+            ## Apparently, this isn't necessarily a sensible value
+            #print "geany.general_prefs.default_open_path=%s" % (geany.general_prefs.default_open_path, )
+            
+            ## Attempt to see .geany directory here
+            if self.config_base_directory is None:
+                #print "os.getcwd()=%s" % (os.getcwd(),)
+                directory = os.getcwd()
+                directory_geany = os.path.join(directory, self.config_sub_directory, )
+                if os.path.isdir(directory_geany):
+                    self.config_base_directory=directory
+                else:
+                    ## recurse, search for .git, etc
+                    # ...
+                    ## Finally : prompt for base directory for .geany file
+                    pass
+            
+            if self.config_base_directory is not None:
+                ## Load in self.config_project_file_readonly
+                project_config_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_project_file_readonly)
+                self._load_project_tree(project_config_ini)
+                
+                ## Load in session information
+                ## TODO
+                pass
         
         geany.signals.connect('document-activate', self.document_changed)
         #self.detector=detect()
@@ -213,7 +220,7 @@ class ProjectTree(geany.Plugin):
                 #self.treemodel.set_value(iter, 0, os.path.basename(f))
                 #self.treemodel.set_value(iter, 1, f)
                 
-                iter = self.treemodel.append(parent, (os.path.basename(f), f))
+                iter = self.treemodel.append(parent, (os.path.basename(f), f))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
                 # No need to store this 'iter' - can easily append after
                 
             else:  # This is something special
@@ -221,12 +228,11 @@ class ProjectTree(geany.Plugin):
                     g = vd['group']
                     print "Got a group : %s" % (g,)
                     ## Add the  group to the tree, and recursively go after that section...
-                    iter = self.treemodel.append(parent, (g, g))
+                    iter = self.treemodel.append(parent, (g, g))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
                     ### Descend with parent=iter
                     self._load_project_tree_branch(config, section+'/'+g, iter)
                     
         
-
     def _menu_item_add_connected(self, menu, title, action):
         menu_item = gtk.MenuItem(title)
         menu_item.connect("activate", action)
@@ -278,6 +284,8 @@ class ProjectTree(geany.Plugin):
     
 
 
+
+
     def tree_add_group(self, *args):
         print "tree_add_group"
         
@@ -309,6 +317,7 @@ class ProjectTree(geany.Plugin):
 
     def tree_add_current_file(self, *args):
         print "tree_add_current_file"
+        
 
     """
     def menu_project(self):
@@ -426,7 +435,69 @@ class ProjectTree(geany.Plugin):
                 
         return None
 
+    def treeview_row_activated(self, tv, treepath, tvcolumn):
+        print "Activated Tree-Path ", treepath
+        iter = self.treemodel.get_iter(treepath)
+        if self.treemodel.iter_has_child(iter): # This is a group : double-clicked
+            g = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
+            print "Group ", g
+            if self.treeview.row_expanded(treepath):
+                self.treeview.collapse_row(treepath)
+            else:
+                self.treeview.expand_row(treepath, False)
+        else:                                   # This is a file : double-clicked
+            row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
+            file = row[0]
+            print "OPEN FILE     ", file
+            print "   FILE BASE  ", self.config_base_directory
+            filepath = os.path.join(self.config_base_directory, file)
+            print "OPEN FILEPATH ", filepath
+            geany.document.open_file(filepath)
+        
+        #filepath = self.get_treeview_path(treepath)
+        #if not os.path.isdir(filepath):
+        #    geany.document.open_file(filepath)
+        print '  activated (double-clicked) treeview row'
+        
+        
+    #def treeview_select_cursor_row(self, tv, treepath, tvcolumn):
+        
+        
+    def treeview_row_expanded(self, tv, treeiter, treepath):
+        #self.populate_treeview_children(treeiter, clear=False)
+        print 'expanded treeview row'
+        pass #Don't really care
 
+    def treeview_button_press_event(self, tv, event):
+        print "treeview_menu event.button=%d" % (event.button,)
+        
+        ## This gets selection, but it hasn't been updated yet...
+        tree_selection=tv.get_selection()
+        #treestore, path = tree_selection.get_selected_rows()
+        treemodel, iter = tree_selection.get_selected()
+        
+        if iter:  # Something actually clicked on
+            #p = path[0]  # Each p is an array of nodes
+            #print "  Path to clicked : ", p
+            print "  iter clicked : ", iter
+            
+            if event.button == 1:  # Left click NOOP
+                pass
+                
+            if event.button == 3:  # Right click
+                
+                pass
+                #print "len(path)=%d" % (len(path),)
+                #filepath = self.get_treeview_path(p)
+                
+                #self.show_popup_menu(filepath, p)
+                
+        else:
+            if event.button == 3:  # Right click
+                # Empty space clicked on 
+                print "Popup menu_empty"
+                self.menu_empty.show()
+                self.menu_empty.popup(None,None,None,1,0)
 
     def render_icon_remote(self, tvcolumn, cell, model, iter):
         stock = model.get_value(iter, 0)
@@ -517,28 +588,6 @@ class ProjectTree(geany.Plugin):
         model.set_value(myiter,0,name)
         return myiter
 
-    #treeview menu also grab selected item values / path
-    def treeview_menu(self, tv, event):
-        subpath=[]
-        #print "event.button=%d" % (event.button,)
-        
-        #get current treeview selection
-        treemodel=tv.get_model()
-        tree_selection=tv.get_selection()
-        treestore, path = tree_selection.get_selected_rows()
-        
-        if event.button == 3:  # Right click
-            #print "len(path)=%d" % (len(path),)
-            if len(path)>0:  # Something actually clicked on
-                filepath = self.get_treeview_path(path[0])
-                self.show_popup_menu(filepath, path[0])
-            else:
-                # Empty space clicked on : Don't care which button
-                #self.show_popup_menu('asdasd', 'tyrtrtyy')
-                print "Popup menu_empty"
-                self.menu_empty.show()
-                self.menu_empty.popup(None,None,None,1,0)
-
     def fake_menu(self,*args):
         pass
 
@@ -552,12 +601,6 @@ class ProjectTree(geany.Plugin):
             result+=' '
         return result
 
-    def on_selection(self, tv, treepath, tvcolumn):
-        filepath = self.get_treeview_path(treepath)
-        if not os.path.isdir(filepath):
-            geany.document.open_file(filepath)
-        print 'activated'
-
     def get_treeview_path(self, path):
         treemodel = self.treemodel
         filepath = os.sep
@@ -565,9 +608,6 @@ class ProjectTree(geany.Plugin):
             node = treemodel.get_iter(path[0:item])
             filepath += treemodel.get_value(node,0).strip(os.sep)+os.sep
         return filepath.rstrip(os.sep)
-
-    def on_expand_treeview(self, tv, treeiter, treepath):
-        self.populate_treeview_children(treeiter, clear=False)
 
     def open_documents(self):
         for document in geany.document.get_documents_list():
