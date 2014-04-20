@@ -20,11 +20,10 @@ Click on tree title should bring up ...
 DONE  Need to detect whether start directory contains a .geany/ folder
 DONE  Load project_sample.ini file if it's in .geany
 DONE  Double-1-Click on a group to open/close branch
+DONE  Double-1-Click on a file to open it in editor (row-activated)
 
-Double-1-Click on a file to open it in editor (row-activated)
-
-1-Click on file == just change selection (== noop in signal handler)
-1-Click on path == just change selection (== noop in signal handler)
+DONE  1-Click on file == just change selection (== noop in signal handler)
+DONE  1-Click on path == just change selection (== noop in signal handler)
 
 3-Click Add current file to end of group (menu_group)
 3-Click Add current file after this one (menu_file)

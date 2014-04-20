@@ -89,6 +89,19 @@ class ProjectTree(geany.Plugin):
             
             self.treeview = gtk.TreeView(self.treemodel)
             self.treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
+            
+            
+            ## http://python.6.x6.nabble.com/Treeview-drag-drop-chap14-td1939736.html
+            targets = [
+                ('GTK_TREE_MODEL_ROW', gtk.TARGET_SAME_WIDGET, 0),
+                #('GEANY-TAB', gtk.TARGET_SAME_APP, 1),
+            ]
+
+            ## http://www.pygtk.org/pygtk2tutorial/sec-TreeViewDragAndDrop.html
+            self.treeview.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, targets, gtk.gdk.ACTION_MOVE)
+            self.treeview.enable_model_drag_dest(targets, gtk.gdk.ACTION_DEFAULT)
+            self.treeview.connect("drag_data_get",      self.drag_data_get_data)
+            self.treeview.connect("drag_data_received", self.drag_data_received_data)
 
             self.treeview.connect('row-activated', self.treeview_row_activated)
             #self.treeview.connect('select-cursor-row', self.treeview_select_cursor_row)
@@ -183,7 +196,7 @@ class ProjectTree(geany.Plugin):
                 ## TODO
                 pass
         
-        geany.signals.connect('document-activate', self.document_changed)
+        #geany.signals.connect('document-activate', self.document_changed)
         #self.detector=detect()
         
         
@@ -239,10 +252,16 @@ class ProjectTree(geany.Plugin):
         menu_item.show()
         menu.append(menu_item)
     
+    def _menu_item_add_separator(self, menu):
+        sep = gtk.SeparatorMenuItem()
+        sep.show()
+        menu.append(sep)
+    
     def menu_empty_fill(self):
         ## Right-Click menu : empty space : AddGroup, AddCurrentFile
         menu = gtk.Menu()
         self._menu_item_add_connected(menu, "TEST", self.menu_empty_action_test)
+        self._menu_item_add_separator(menu)
         self._menu_item_add_connected(menu, "Add Group", self.tree_add_group)
         self._menu_item_add_connected(menu, "Add Current File", self.tree_add_current_file)
         self.menu_empty = menu
@@ -283,8 +302,54 @@ class ProjectTree(geany.Plugin):
             print "RETVAL ignored"
     
 
+    def drag_data_get_data(self, treeview, context, selection, target_id, etime):
+        treeselection = treeview.get_selection()
+        model, iter = treeselection.get_selected()
+        path = model.get_path(iter)
+        
+        print "drag_data_get_data path=", path
+        ## http://www.pygtk.org/pygtk2reference/class-gtkselectiondata.html
+        # This is implicitly in 'GTK_TREE_MODEL_ROW' format
+        success = selection.tree_set_row_drag_data(model, path)
+        #print "SENT OK" if success else "FAILED TO SEND"
 
-
+    def drag_data_received_data(self, treeview, context, x, y, selection, info, etime):
+        #model = treeview.get_model()
+        #data = selection.data
+        
+        #print "drag_data_received_data info = ", info
+        #print "drag_data_received_data format = ", selection.get_format()
+        #print "drag_data_received_data context.action= ", context.action
+        #print "drag_data_received_data data-type = ", selection.get_data_type()
+        
+        ### Need to handle movement of trees, for instance...
+        ### LOOK AT : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
+        
+        if selection.get_data_type() == 'GTK_TREE_MODEL_ROW':
+            print 'GTK_TREE_MODEL_ROW'
+            model, data = selection.tree_get_row_drag_data()
+            
+            print "drag_data_received_data", data
+            drop_info = treeview.get_dest_row_at_pos(x, y)
+            if drop_info:
+                path, position = drop_info
+                iter = model.get_iter(path)
+                if position == gtk.TREE_VIEW_DROP_BEFORE:
+                    print "drag_data_received_data drop TREE_VIEW_DROP_BEFORE"
+                    model.insert_before(iter, data)
+                elif position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE:
+                    print "drag_data_received_data drop TREE_VIEW_DROP_INTO_OR_BEFORE"
+                    model.insert_before(iter, data)
+                else:
+                    print "drag_data_received_data drop AFTER"
+                    model.insert_after(iter, data)
+            else:
+                print "drag_data_received_data drop APPEND"
+                model.append(None, data)
+                
+            if context.action == gtk.gdk.ACTION_MOVE:
+                print "drag_data_received_data MOVED"
+                context.finish(True, True, etime)
 
     def tree_add_group(self, *args):
         print "tree_add_group"
@@ -436,11 +501,11 @@ class ProjectTree(geany.Plugin):
         return None
 
     def treeview_row_activated(self, tv, treepath, tvcolumn):
-        print "Activated Tree-Path ", treepath
+        print "Activated Tree-Path (double-clicked) ", treepath
         iter = self.treemodel.get_iter(treepath)
         if self.treemodel.iter_has_child(iter): # This is a group : double-clicked
-            g = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
-            print "Group ", g
+            row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
+            print "Group ", row[0]
             if self.treeview.row_expanded(treepath):
                 self.treeview.collapse_row(treepath)
             else:
@@ -449,15 +514,8 @@ class ProjectTree(geany.Plugin):
             row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
             file = row[0]
             print "OPEN FILE     ", file
-            print "   FILE BASE  ", self.config_base_directory
             filepath = os.path.join(self.config_base_directory, file)
-            print "OPEN FILEPATH ", filepath
             geany.document.open_file(filepath)
-        
-        #filepath = self.get_treeview_path(treepath)
-        #if not os.path.isdir(filepath):
-        #    geany.document.open_file(filepath)
-        print '  activated (double-clicked) treeview row'
         
         
     #def treeview_select_cursor_row(self, tv, treepath, tvcolumn):
@@ -469,8 +527,6 @@ class ProjectTree(geany.Plugin):
         pass #Don't really care
 
     def treeview_button_press_event(self, tv, event):
-        print "treeview_menu event.button=%d" % (event.button,)
-        
         ## This gets selection, but it hasn't been updated yet...
         tree_selection=tv.get_selection()
         #treestore, path = tree_selection.get_selected_rows()
@@ -479,13 +535,14 @@ class ProjectTree(geany.Plugin):
         if iter:  # Something actually clicked on
             #p = path[0]  # Each p is an array of nodes
             #print "  Path to clicked : ", p
-            print "  iter clicked : ", iter
+            #print "  iter clicked : ", iter
             
             if event.button == 1:  # Left click NOOP
+                #print "treeview_menu event.button=%d" % (event.button,)
                 pass
                 
             if event.button == 3:  # Right click
-                
+                #print "treeview_menu event.button=%d" % (event.button,)
                 pass
                 #print "len(path)=%d" % (len(path),)
                 #filepath = self.get_treeview_path(p)
@@ -494,7 +551,8 @@ class ProjectTree(geany.Plugin):
                 
         else:
             if event.button == 3:  # Right click
-                # Empty space clicked on 
+                print "treeview_menu event.button=%d NOITER" % (event.button,)
+                # Empty space clicked on - either first click on window, or project is empty
                 print "Popup menu_empty"
                 self.menu_empty.show()
                 self.menu_empty.popup(None,None,None,1,0)
