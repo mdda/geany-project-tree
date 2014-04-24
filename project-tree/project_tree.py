@@ -1,6 +1,8 @@
 import os, sys
 import re
 import shutil
+#import pygtk
+#pygtk.require('2.0')
 import gtk, glib
 import gobject
 import geany
@@ -34,6 +36,10 @@ class ProjectTree(geany.Plugin):
     
     TREEVIEW_VISIBLE_TEXT_COL = 0
     TREEVIEW_HIDDEN_TEXT_COL = 1
+    TREEVIEW_HIDDEN_TYPE_COL = 2  
+    
+    TREEVIEW_ROW_TYPE_FILE = 0
+    TREEVIEW_ROW_TYPE_GROUP = 1
 
     #use this to decide what items to show in the menu when right clicking
     #current_treedepth=0
@@ -83,7 +89,7 @@ class ProjectTree(geany.Plugin):
             self.widget_destroy_stack.extend([self.dialog_input, self.dialog_confirm, ])
             
         if True:  ## Set up the side-bar
-            self.treemodel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+            self.treemodel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_INT)
             #setup treeview and treestore model
             #self.treemodel.connect("cursor-changed", self.populate_treeview)
             
@@ -99,9 +105,14 @@ class ProjectTree(geany.Plugin):
 
             ## http://www.pygtk.org/pygtk2tutorial/sec-TreeViewDragAndDrop.html
             self.treeview.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, targets, gtk.gdk.ACTION_MOVE)
-            self.treeview.enable_model_drag_dest(targets, gtk.gdk.ACTION_DEFAULT)
-            self.treeview.connect("drag_data_get",      self.drag_data_get_data)
-            self.treeview.connect("drag_data_received", self.drag_data_received_data)
+            self.treeview.enable_model_drag_dest(                        targets, gtk.gdk.ACTION_MOVE) #ACTION_DEFAULT
+            self.treeview.connect("drag_data_get",      self._drag_data_get)
+            self.treeview.connect('drag-motion',        self._drag_motion)
+
+            self.treeview.connect("drag_data_received", self._drag_data_received)
+            
+            #self.treeview.drag_dest_set( gtk.DEST_DEFAULT_MOTION | gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP, targets, gtk.gdk.ACTION_MOVE)
+
 
             self.treeview.connect('row-activated', self.treeview_row_activated)
             #self.treeview.connect('select-cursor-row', self.treeview_select_cursor_row)
@@ -233,7 +244,7 @@ class ProjectTree(geany.Plugin):
                 #self.treemodel.set_value(iter, 0, os.path.basename(f))
                 #self.treemodel.set_value(iter, 1, f)
                 
-                iter = self.treemodel.append(parent, (os.path.basename(f), f))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
+                iter = self.treemodel.append(parent, (os.path.basename(f), f, self.TREEVIEW_ROW_TYPE_FILE))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL, TREEVIEW_ROW_TYPE_FILE)
                 # No need to store this 'iter' - can easily append after
                 
             else:  # This is something special
@@ -241,7 +252,7 @@ class ProjectTree(geany.Plugin):
                     g = vd['group']
                     print "Got a group : %s" % (g,)
                     ## Add the  group to the tree, and recursively go after that section...
-                    iter = self.treemodel.append(parent, (g, g))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
+                    iter = self.treemodel.append(parent, (g, g, self.TREEVIEW_ROW_TYPE_GROUP))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
                     ### Descend with parent=iter
                     self._load_project_tree_branch(config, section+'/'+g, iter)
                     
@@ -302,54 +313,142 @@ class ProjectTree(geany.Plugin):
             print "RETVAL ignored"
     
 
-    def drag_data_get_data(self, treeview, context, selection, target_id, etime):
+    def _drag_data_get(self, treeview, context, selection, target_id, eventtime):
+        print "drag_data_get"
+        
         treeselection = treeview.get_selection()
         model, iter = treeselection.get_selected()
         path = model.get_path(iter)
         
-        print "drag_data_get_data path=", path
+        print "drag_data_get path=", path
         ## http://www.pygtk.org/pygtk2reference/class-gtkselectiondata.html
         # This is implicitly in 'GTK_TREE_MODEL_ROW' format
         success = selection.tree_set_row_drag_data(model, path)
         #print "SENT OK" if success else "FAILED TO SEND"
+        
+        #context.drag_abort(eventtime)  ## This does nothing??
+        print "drag_data_get_END"
 
-    def drag_data_received_data(self, treeview, context, x, y, selection, info, etime):
-        #model = treeview.get_model()
-        #data = selection.data
+    def _drag_motion(self, treeview, context, x, y, eventtime):
+        print "drag_motion"
+        ## This shows up the target location during the drag
+        try:
+            treeview.set_drag_dest_row(*treeview.get_dest_row_at_pos(x, y))
+        except TypeError:
+            treeview.set_drag_dest_row(len(treeview.get_model()) - 1, gtk.TREE_VIEW_DROP_AFTER)
+
+        ## This makes it look like a MOVE
+        context.drag_status(gtk.gdk.ACTION_MOVE, eventtime)
+        return True # i.e. this has been handled
+
+    """
+    ## See : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
+    def _treeview_expand_to_path(self, treeview, path):
+        ""Expand row at path, expanding any ancestors as needed.
+
+        This function is provided by gtk+ >=2.2, but it is not yet wrapped
+        by pygtk 2.0.0.""
+        print "_treeview_expand_to_path"
+        for i in range(len(path)):
+            treeview.expand_row(path[:i+1], open_all=False)
+
+    ## See : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
+    def _treeview_copy_row(self, treeview, model, source_iter, target_iter, drop_position):
+        ""Copy tree model rows from treeiter:source_iter into, before or after treeiter:target_iter.
+
+        All children of the source row are also copied and the
+        expanded/collapsed status of each row is maintained.""
+
+        print "_treeview_copy_row ", source_iter
+        source_row = model.get(source_iter)
+        if drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE:
+            new_iter = model.prepend(parent=target_iter, row=source_row)
+        elif drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER:
+            new_iter = model.append(parent=target_iter, row=source_row)
+        elif drop_position == gtk.TREE_VIEW_DROP_BEFORE:
+            new_iter = model.insert_before(parent=None, sibling=target_iter, row=source_row)
+        elif drop_position == gtk.TREE_VIEW_DROP_AFTER:
+            new_iter = model.insert_after(parent=None, sibling=target_iter, row=source_row)
+
+        # Copy any children of the source row.
+        for n in range(model.iter_n_children(source_iter)):
+            child_iter = model.iter_nth_child(source_iter, n)
+            self._treeview_copy_row(treeview, model, child_iter, new_iter, gtk.TREE_VIEW_DROP_INTO_OR_BEFORE)
+
+        # If the source row is expanded, expand the newly copied row
+        # also.  We must add at least one child before we can expand,
+        # so we expand here after the children have been copied.
+        source_is_expanded = treeview.row_expanded(model.get_path(source_iter))
+        if source_is_expanded:
+            self._treeview_expand_to_path(treeview, model.get_path(new_iter))
+    """
+
+    def _drag_data_received(self, treeview, context, x, y, selection_data, info, eventtime):
+        print "drag_data_received_data data-type = ", selection_data.get_data_type(), eventtime
         
-        #print "drag_data_received_data info = ", info
-        #print "drag_data_received_data format = ", selection.get_format()
-        #print "drag_data_received_data context.action= ", context.action
-        #print "drag_data_received_data data-type = ", selection.get_data_type()
-        
-        ### Need to handle movement of trees, for instance...
-        ### LOOK AT : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
-        
-        if selection.get_data_type() == 'GTK_TREE_MODEL_ROW':
-            print 'GTK_TREE_MODEL_ROW'
-            model, data = selection.tree_get_row_drag_data()
+        if selection_data.get_data_type() == 'GTK_TREE_MODEL_ROW':
+            ### Need to handle movement of trees, for instance...
+            ### LOOK AT : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
             
-            print "drag_data_received_data", data
+            print '  GTK_TREE_MODEL_ROW', eventtime
+            #model, data = selection.tree_get_row_drag_data()  ## This worked on a data basis
+            model, source_iter = treeview.get_selection().get_selected()
             drop_info = treeview.get_dest_row_at_pos(x, y)
             if drop_info:
-                path, position = drop_info
-                iter = model.get_iter(path)
-                if position == gtk.TREE_VIEW_DROP_BEFORE:
-                    print "drag_data_received_data drop TREE_VIEW_DROP_BEFORE"
-                    model.insert_before(iter, data)
-                elif position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE:
-                    print "drag_data_received_data drop TREE_VIEW_DROP_INTO_OR_BEFORE"
-                    model.insert_before(iter, data)
-                else:
-                    print "drag_data_received_data drop AFTER"
-                    model.insert_after(iter, data)
-            else:
-                print "drag_data_received_data drop APPEND"
-                model.append(None, data)
+                target_path, drop_position = drop_info 
+                target_iter = model.get_iter(target_path)
+                source_path = model.get_path(source_iter)
                 
-            if context.action == gtk.gdk.ACTION_MOVE:
-                print "drag_data_received_data MOVED"
-                context.finish(True, True, etime)
+                #if (drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE or drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER):
+                print "  source_path = ", source_path
+                print "  target_path = ", target_path
+                print "  drop_info = ", drop_info
+                print "  action = ", context.action 
+                
+                deny = False
+                
+                if (drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE or drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER):
+                    # This is dropping into something else
+                    row_type, = model.get(target_iter, self.TREEVIEW_HIDDEN_TYPE_COL)
+                    print "      Target being dropped INTO something", row_type
+                    if row_type == self.TREEVIEW_ROW_TYPE_FILE:
+                        # Can't drop anything into a file
+                        print "      Target being dropped INTO is a file!"
+                        deny = True
+                        
+                if model.is_ancestor(source_iter, target_iter):
+                    print "      Dropped into Ancestor"
+                    deny = True
+                    
+                if source_path == target_path:
+                    print "      Dropped onto self"
+                    deny = True
+                    
+                if deny:
+                    print "          DENY action"
+                    #context.drag_abort(eventtime)  #SEGFAULT
+                    #context.drag_status(0, eventtime)
+                    #context.finish(False, False, eventtime)
+                    
+                    ###  This should really deny the operation...
+                    #print "  context.drop_reply(False, eventtime)"
+                    #context.drop_reply(False, eventtime)
+                    #return False
+                    
+                    ## Move this node somewhere less harmful??
+                    ##model.move_after(source_iter, None)
+                    
+                else:
+                    # Strangely, del_=True means that rows get mystically copied/erased...
+                    context.finish(True, False, eventtime)
+                    
+            else:
+                print "  no drop"
+        else:
+            print "  Not GTK_TREE_MODEL_ROW -- no context.finish()"
+            #drag_context.finish(False, False, eventtime)                
+            
+        return True  # Not Needed?
 
     def tree_add_group(self, *args):
         print "tree_add_group"
