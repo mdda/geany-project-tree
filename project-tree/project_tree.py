@@ -27,11 +27,11 @@ class ProjectTree(geany.Plugin):
     widget_destroy_stack = []
     
     config_base_directory = None
-    config_sub_directory = ".geany"
+    config_sub_directory         = ".geany"
     
-    config_project_file  = "project.ini"
+    config_project_file          = "project.ini"
     config_project_file_readonly = "project_sample.ini"
-    config_session_file  = "session.ini"
+    config_session_file          = "session.ini"
     config_session_file_initial  = "session_default.ini"
     
     TREEVIEW_VISIBLE_TEXT_COL = 0
@@ -558,6 +558,7 @@ class ProjectTree(geany.Plugin):
             self.menu.append(item)
     """
     
+    """
     #show hide menu items dependent on treeview selection depth
     def show_popup_menu(self, filepath, path=()):
         depth = len(path)
@@ -598,20 +599,23 @@ class ProjectTree(geany.Plugin):
                 item.show()
                 
         return None
-
+    """
+    
     def treeview_row_activated(self, tv, treepath, tvcolumn):
         print "Activated Tree-Path (double-clicked) ", treepath
         iter = self.treemodel.get_iter(treepath)
-        if self.treemodel.iter_has_child(iter): # This is a group : double-clicked
-            row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
-            print "Group ", row[0]
+        row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TYPE_COL, self.TREEVIEW_HIDDEN_TEXT_COL) 
+        #if self.treemodel.iter_has_child(iter): # This is a group : double-clicked
+        if row[0] == self.TREEVIEW_ROW_TYPE_GROUP: # This is a group : double-clicked
+            #row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
+            print "Group ", row[1]
             if self.treeview.row_expanded(treepath):
                 self.treeview.collapse_row(treepath)
             else:
                 self.treeview.expand_row(treepath, False)
         else:                                   # This is a file : double-clicked
-            row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
-            file = row[0]
+            #row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
+            file = row[1]
             print "OPEN FILE     ", file
             filepath = os.path.join(self.config_base_directory, file)
             geany.document.open_file(filepath)
@@ -656,6 +660,7 @@ class ProjectTree(geany.Plugin):
                 self.menu_empty.show()
                 self.menu_empty.popup(None,None,None,1,0)
 
+    """
     def render_icon_remote(self, tvcolumn, cell, model, iter):
         stock = model.get_value(iter, 0)
         pb = self.treeview.render_icon(stock, gtk.ICON_SIZE_MENU, None)
@@ -744,7 +749,9 @@ class ProjectTree(geany.Plugin):
              model.set_value(myiter,0,gtk.STOCK_FILE)
         model.set_value(myiter,0,name)
         return myiter
-
+    """
+    
+    """
     def fake_menu(self,*args):
         pass
 
@@ -861,18 +868,6 @@ class ProjectTree(geany.Plugin):
                     project_changed=True
                 self.selected_project_folder = root+folder
                 print 'project folder == ' +str(self.selected_project_folder)
-        """ Wooo        
-        self.configuration.load_config(self.selected_project_folder)
-
-
-        if self.configuration.connections.get('development', None):
-            print self.configuration.config_site_address
-            print self.configuration.connections['development']['url-address']
-            if project_changed==True:
-                self.browser.open_url(self.configuration.connections['development']['url-address'])
-            else:
-                self.browser.reload_url()
-        """
 
     def folder_close_children(self, *args):
         if self.selected_filepath is None:
@@ -972,6 +967,8 @@ class ProjectTree(geany.Plugin):
         #self.gui_config['window'].show()
 
 
+    """
+    
     def cleanup(self):
         # destroy top level widgets to remove them from the UI/memory
         for widget in self.widget_destroy_stack:
