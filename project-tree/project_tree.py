@@ -235,11 +235,7 @@ class ProjectTree(geany.Plugin):
             if '' in vd: # This is a file (the default ending)
                 print "Got a file"
                 f = vd['']
-                ## Add the file to the tree
-                #iter = self.treemodel.insert_after(None,None)
-                #self.treemodel.set_value(iter, 0, os.path.basename(f))
-                #self.treemodel.set_value(iter, 1, f)
-                
+                ## Just add the file to the tree where we are
                 iter = model.append(parent, (os.path.basename(f), f, self.TREEVIEW_ROW_TYPE_FILE))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL, TREEVIEW_ROW_TYPE_FILE)
                 # No need to store this 'iter' - can easily append after
                 
@@ -247,20 +243,28 @@ class ProjectTree(geany.Plugin):
                 if 'group' in vd:
                     g = vd['group']
                     print "Got a group : %s" % (g,)
-                    ## Add the  group to the tree, and recursively go after that section...
+                    ## Add the group to the tree, and recursively go after that section...
                     iter = model.append(parent, (g, g, self.TREEVIEW_ROW_TYPE_GROUP))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
                     ### Descend with parent=iter
                     self._load_project_tree_branch(model, config, section+'/'+g, iter)
                     
-    
-    def _menubar_0_File_0_LoadSession(self, data):
+    #############  menubar functions START #############  
+                    
+    ## Annotation style for menubar callbacks :
+    # _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
+    def _menubar_0_File_0_Load_Session(self, data):
         print "_menubar_0_File_0_LoadSession"
         return True
         
-    def _menubar_0_File_1_SaveSession(self, data):
+    def _menubar_0_File_1_Save_Session(self, data):
         print "_menubar_0_File_1_SaveSession"
         return True
         
+    def _menubar_1_Search_0_Find_in_Project_Files(self, data):
+        print "_menubar_1_Search_0_Find_in_Project_Files"
+        return True
+        
+    #############  menubar functions END #############  
         
         
         
@@ -318,7 +322,11 @@ class ProjectTree(geany.Plugin):
                 print "Too Short"
         else:
             print "RETVAL ignored"
-    
+
+
+
+
+    #############  Drag-n-Drop START #############  
 
     ## DnD Source Signals
     def _drag_data_get(self, treeview, drag_context, selection_data, info, eventtime):
@@ -437,6 +445,7 @@ class ProjectTree(geany.Plugin):
         else:
             print "  Not GTK_TREE_MODEL_ROW -- no context.finish()"
 
+    #############  Drag-n-Drop END #############  
 
 
 
@@ -1029,7 +1038,7 @@ def _create_menubar_from_annotated_callbacks(class_with_menu_callbacks):
                 menu_current_title = m.group(2)
                 menubar_headers.append(dict(label=menu_current_title, submenu=[]))
             menubar_headers[-1]['submenu'].append(dict(
-              label=m.group(4),
+              label=m.group(4).replace('_',' '),
               fn=k,
             ))
     #print menubar_headers
