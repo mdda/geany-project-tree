@@ -32,17 +32,9 @@ class ProjectTree(geany.Plugin):
     def __init__(self):
         self.clipboard=gtk.clipboard_get()
 
-        if True:  ## Set up the pop-up menus
-            ## Click menu : empty space : AddGroup, AddCurrentFile
-            self.menu_empty_fill()
-            
-            ## Right-Click menu : file  : AddGroup, AddCurrentFile, RemoveFile
-            self.menu_file_fill()
-            
-            ## Right-Click menu : group : AddGroup, RemoveGroup, RenameGroup, AddCurrentFile
-            self.menu_group_fill()
-            
-            self.widget_destroy_stack.extend([self.menu_empty, self.menu_file, self.menu_group, ])
+        if True:  ## Set up the pop-up menu
+            self.menu_popup = _create_menu_from_annotated_callbacks(self, '_popup')
+            self.widget_destroy_stack.extend([self.menu_popup, ])
 
         if True:  ## Set up a reusable, generic question/answer dialog box and a confirmation box
             self.dialog_confirm = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, None)
@@ -280,41 +272,52 @@ class ProjectTree(geany.Plugin):
         
     #############  menubar functions END #############  
         
-        
-        
-    def _menu_item_add_connected(self, menu, title, action):
-        menu_item = gtk.MenuItem(title)
-        menu_item.connect("activate", action)
-        menu_item.show()
-        menu.append(menu_item)
+    #############  popup functions START #############  
     
-    def _menu_item_add_separator(self, menu):
-        sep = gtk.SeparatorMenuItem()
-        sep.show()
-        menu.append(sep)
+    ## Annotation style for menu callbacks (normally for popups) :
+    # _popup _{order#} _{heading-label}
     
-    def menu_empty_fill(self):
-        ## Right-Click menu : empty space : AddGroup, AddCurrentFile
-        menu = gtk.Menu()
-        self._menu_item_add_connected(menu, "TEST", self.menu_empty_action_test)
-        self._menu_item_add_separator(menu)
-        self._menu_item_add_connected(menu, "Add Group", self.tree_add_group)
-        self._menu_item_add_connected(menu, "Add Current File", self.tree_add_current_file)
-        self.menu_empty = menu
-
-    def menu_file_fill(self):
-        ## Right-Click menu : file  : AddGroup, AddCurrentFile, RemoveFile
-        menu = gtk.Menu()
+    def _popup_0_SEPARATOR(self, data): pass
         
-        self.menu_file = menu
+    def _popup_1_Add_Group(self, data):
+        print "_popup_1_Add_Group"
+        return True
+    
+    def _popup_2_Add_Current_File(self, data):
+        print "_popup_2_Add_Current_File"
+        return True
         
-    def menu_group_fill(self):
-        ## Right-Click menu : group : AddGroup, RemoveGroup, RenameGroup, AddCurrentFile
-        menu = gtk.Menu()
+    def _popup_4_SEPARATOR(self, data): pass
+    
+    def _popup_5_Rename(self, data):
+        print "_popup_5_Rename"
+        return True
+    def _popup_6_Delete(self, data):
+        print "_popup_6_Delete"
+        return True
         
-        self.menu_group = menu
-
-
+    ### Popup click handler ###
+    
+    def treeview_button_press_event(self, treeview, event):
+        print "treeview_menu event.button=%d" % (event.button,)
+        if event.button == 3:  # Right click
+            path_at_pos = treeview.get_path_at_pos(int(event.x), int(event.y))
+            if path_at_pos:
+                path, col, dx, dy = path_at_pos
+                treeview.set_cursor(path) # Move the selection under clicker
+            else: 
+                ## This is not hovering over something
+                path = None
+            
+            self.menu_popup.show()
+            ## See: https://developer.gnome.org/pygtk/stable/class-gtkmenu.html#method-gtkmenu--popup
+            self.menu_popup.popup(None,None,None, event.button, event.time, data=path)
+            return True
+        return False
+    #############  popup functions END #############  
+        
+        
+    ### TODO : Prompt for .geany path
     def menu_empty_action_test(self, *args):
         entry = gtk.Entry()
         entry.set_text(os.getcwd())
@@ -336,9 +339,8 @@ class ProjectTree(geany.Plugin):
                 print "Too Short"
         else:
             print "RETVAL ignored"
-
-
-
+            
+            
 
     #############  Drag-n-Drop START #############  
 
@@ -647,36 +649,6 @@ class ProjectTree(geany.Plugin):
         pass #Don't really care
     """
 
-    def treeview_button_press_event(self, treeview, event):
-        ## This gets selection, but it hasn't been updated yet...
-        tree_selection=treeview.get_selection()
-        #treestore, path = tree_selection.get_selected_rows()
-        model, iter = tree_selection.get_selected()
-        
-        if iter:  # Something actually clicked on
-            #p = path[0]  # Each p is an array of nodes
-            #print "  Path to clicked : ", p
-            #print "  iter clicked : ", iter
-            
-            if event.button == 1:  # Left click NOOP
-                #print "treeview_menu event.button=%d" % (event.button,)
-                pass
-                
-            if event.button == 3:  # Right click
-                #print "treeview_menu event.button=%d" % (event.button,)
-                pass
-                #print "len(path)=%d" % (len(path),)
-                #filepath = self.get_treeview_path(p)
-                
-                #self.show_popup_menu(filepath, p)
-                
-        else:
-            if event.button == 3:  # Right click
-                print "treeview_menu event.button=%d NOITER" % (event.button,)
-                # Empty space clicked on - either first click on window, or project is empty
-                print "Popup menu_empty"
-                self.menu_empty.show()
-                self.menu_empty.popup(None,None,None,1,0)
 
     """
     def render_icon_remote(self, tvcolumn, cell, model, iter):
@@ -1075,12 +1047,40 @@ def _create_menubar_from_annotated_callbacks(class_with_menu_callbacks):
         
         menu_bar.append(menu_item)
     menu_bar.show()
-    return  menu_bar
+    return menu_bar
     
 
-
-
-
+def _create_menu_from_annotated_callbacks(class_with_menu_callbacks, prefix = '_popup'):
+    """
+    This is a nasty little function that looks through the class, and builds the menu from 
+    the specifically formed methods of the class, and links it all up as items and callbacks ...
+    Maybe there's a nicer way to do this using decorators
+    """
+    
+    ## Sample annotated method :  _popup_0_AddCurrentFile
+    attrib_matcher = re.compile(prefix+"_(\d+)_(.+)")
+    menu_headers=[]
+    for k in sorted(dir(class_with_menu_callbacks)):
+        #print "Attr: ",k
+        m = attrib_matcher.match(k)
+        if m:
+            label = m.group(2).replace('_',' ')
+            menu_headers.append(dict( label=label, fn=k, ))
+    print menu_headers
+    
+    menu = gtk.Menu()
+    for menu_header in menu_headers:
+        menu = gtk.Menu()    # Don't need to show menus
+        if menu_header['label'] == 'SEPARATOR':
+            item = gtk.SeparatorMenuItem()
+        else:
+            item = gtk.MenuItem(menu_header['label'])
+            item.connect_object("activate", getattr(class_with_menu_callbacks, menu_header['fn']), menu_header['fn'])
+        item.show()
+        menu.append(item)
+    
+    menu.show()
+    return menu    
 
 
 class xxx_plugin_config:
