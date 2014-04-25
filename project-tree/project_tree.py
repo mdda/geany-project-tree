@@ -85,21 +85,8 @@ class ProjectTree(geany.Plugin):
             ## Popup actions
             treeview.connect('button_press_event', self.treeview_button_press_event)
             
-            #~ fontT = pango.FontDescription("serif light Oblique 8")
-            #~ fontO = pango.FontDescription("serif bold 8")
-            #~ treeView.cell[2].set_property('font-desc', fontT)
-            #~ treeView.cell[3].set_property('font-desc', fontO)
-
-            pix_renderer = gtk.CellRendererPixbuf()
             text_renderer= gtk.CellRendererText()
-
             column0=gtk.TreeViewColumn("Tree Layout Options", text_renderer, text=0)
-            #column0.set_title('Icons & Text')
-            ## This is for setting an icon - which we won't be showing anyway
-            #column0.set_cell_data_func(pix_renderer, self.render_icon_remote)
-            
-            #column0.pack_start(text_renderer, False)
-            #column0.set_resizable(False)
 
             treeview.append_column(column0)
             treeview.show()
@@ -115,19 +102,13 @@ class ProjectTree(geany.Plugin):
             self.menu_bar = _create_menubar_from_annotated_callbacks(class_with_menu_callbacks = self) 
             
         if True:
-            #homogeneous = False, spacing = 0
             box = gtk.VBox(False, 0)
-            ##expand, fill, padding
             box.pack_start(self.menu_bar, expand=False, fill=False, padding=2)
             box.pack_end(self.scrolledwindow, expand=True, fill=True, padding=2)
             box.show()
             
             label = gtk.Label("ProjectTree")
-            
             geany.main_widgets.sidebar_notebook.append_page(box, label)
-            #geany.main_widgets.message_window_notebook.append_page(self.database.gui, labelMYSQL)
-            #self.browser.browser_tab = geany.main_widgets.message_window_notebook.append_page(self.browser.gui, labelBrowser)
-            #geany.main_widgets.message_window_notebook.append_page(self.sftp.gui, labelSFTP)
 
             # keep track of widgets to destroy in plugin_cleanup()
             self.widget_destroy_stack.extend([box, label, ])
