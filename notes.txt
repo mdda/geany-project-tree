@@ -25,6 +25,12 @@ DONE  Double-1-Click on a file to open it in editor (row-activated)
 DONE  1-Click on file == just change selection (== noop in signal handler)
 DONE  1-Click on path == just change selection (== noop in signal handler)
 
+DONE  Drag-and-Drop for files and groups
+Save current layout in a config_tree_layout_file
+
+Save current files in a config_session_file
+Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
+
 3-Click Add current file to end of group (menu_group)
 3-Click Add current file after this one (menu_file)
 

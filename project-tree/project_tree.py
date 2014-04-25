@@ -1,21 +1,10 @@
 import os, sys
-import re
-import shutil
-#import pygtk
-#pygtk.require('2.0')
-import gtk, glib
-import gobject
+
+import gtk, glib, gobject
 import geany
 
 import ConfigParser
-from datetime import datetime
-
-sys.path.append(os.path.dirname(__file__))
-
-#from config.loader import config_handler
-
-#class plugin_config:
-#    pass
+import re
 
 class ProjectTree(geany.Plugin):
     __plugin_name__ = "Project Tree"
@@ -23,16 +12,13 @@ class ProjectTree(geany.Plugin):
     __plugin_description__ = "(Yet Another) Alternative to treeview and project view"
     __plugin_author__ = "Martin Andrews <martin@redcatlabs.com>"
 
-    plugin_root = os.path.dirname(__file__)
-    widget_destroy_stack = []
-    
     config_base_directory = None
     config_sub_directory         = ".geany"
     
-    config_project_file          = "project.ini"
-    config_project_file_readonly = "project_sample.ini"
-    config_session_file          = "session.ini"
-    config_session_file_initial  = "session_default.ini"
+    config_tree_layout_file           = "project-tree-layout.ini"
+    config_tree_layout_file_readonly  = "project-tree-layout_devel.ini"
+    config_session_file               = "session.ini"
+    config_session_file_initial       = "session_default.ini"
     
     TREEVIEW_VISIBLE_TEXT_COL = 0
     TREEVIEW_HIDDEN_TEXT_COL = 1
@@ -41,25 +27,8 @@ class ProjectTree(geany.Plugin):
     TREEVIEW_ROW_TYPE_FILE = 0
     TREEVIEW_ROW_TYPE_GROUP = 1
 
-    #use this to decide what items to show in the menu when right clicking
-    #current_treedepth=0
-    #root_folders=[]
-    #root_folders=['/var/www/',os.path.expanduser('~/')+'Ubuntu One/python/']
-
-    #selected_filename = None
-    #selected_fullpath = None
-    #selected_filepath = None
-    #selected_treeiter = None
-    #selected_project_folder = None
-
-    #configuration = config_handler(geany.general_prefs.default_open_path)
-    #database = mysql_handler(geany.general_prefs.default_open_path)
-    #browser = browser_handler()
-    #remote_files = sftp_handler(geany.general_prefs.default_open_path)
-
-    #cfg = plugin_config(plugin_root)
-    #root_folders = cfg.folders
-
+    widget_destroy_stack = []
+    
     def __init__(self):
         self.clipboard=gtk.clipboard_get()
 
@@ -93,8 +62,9 @@ class ProjectTree(geany.Plugin):
             #setup treeview and treestore model
             #self.treemodel.connect("cursor-changed", self.populate_treeview)
             
-            self.treeview = gtk.TreeView(treemodel)
-            self.treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
+            treeview = gtk.TreeView(treemodel)
+            treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
+            treeview.set_headers_visible(False)
             
             
             ## http://python.6.x6.nabble.com/Treeview-drag-drop-chap14-td1939736.html
@@ -104,28 +74,25 @@ class ProjectTree(geany.Plugin):
             ]
 
             ## http://www.pygtk.org/pygtk2tutorial/sec-TreeViewDragAndDrop.html
-            #self.treeview.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, targets, gtk.gdk.ACTION_MOVE)
-            self.treeview.drag_source_set(gtk.gdk.BUTTON1_MASK, targets, gtk.gdk.ACTION_MOVE)
-            self.treeview.connect("drag_data_get",      self._drag_data_get)
-            #self.treeview.connect('drag_data_delete',   self._drag_data_delete)
+            #treeview.enable_model_drag_source(gtk.gdk.BUTTON1_MASK, targets, gtk.gdk.ACTION_MOVE)
+            treeview.drag_source_set(gtk.gdk.BUTTON1_MASK, targets, gtk.gdk.ACTION_MOVE)
+            treeview.connect("drag_data_get",      self._drag_data_get)
+            #treeview.connect('drag_data_delete',   self._drag_data_delete)
             
-            #self.treeview.enable_model_drag_dest(                        targets, gtk.gdk.ACTION_MOVE) #ACTION_DEFAULT
-            self.treeview.drag_dest_set(gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP, targets, gtk.gdk.ACTION_MOVE) 
-            self.treeview.connect('drag_motion',        self._drag_motion)
-            #self.treeview.connect('drag_drop',          self._drag_drop)
-            self.treeview.connect("drag_data_received", self._drag_data_received)
+            #treeview.enable_model_drag_dest(                        targets, gtk.gdk.ACTION_MOVE) #ACTION_DEFAULT
+            treeview.drag_dest_set(gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP, targets, gtk.gdk.ACTION_MOVE) 
+            treeview.connect('drag_motion',        self._drag_motion)
+            #treeview.connect('drag_drop',          self._drag_drop)
+            treeview.connect("drag_data_received", self._drag_data_received)
             
             ## Clicking actions
-            self.treeview.connect('row-activated', self.treeview_row_activated)
+            treeview.connect('row-activated', self.treeview_row_activated)
             #self.treeview.connect('select-cursor-row', self.treeview_select_cursor_row)
             #self.treeview.connect("row-expanded", self.treeview_row_expanded)
             
             ## Popup actions
-            self.treeview.connect('button_press_event', self.treeview_button_press_event)
+            treeview.connect('button_press_event', self.treeview_button_press_event)
             
-            #self.treeview.set_headers_visible(True)
-            self.treeview.set_headers_visible(False)
-
             #~ fontT = pango.FontDescription("serif light Oblique 8")
             #~ fontO = pango.FontDescription("serif bold 8")
             #~ treeView.cell[2].set_property('font-desc', fontT)
@@ -142,14 +109,16 @@ class ProjectTree(geany.Plugin):
             #column0.pack_start(text_renderer, False)
             #column0.set_resizable(False)
 
-            self.treeview.append_column(column0)
-            self.treeview.show()
-
+            treeview.append_column(column0)
+            treeview.show()
+            
             #put treeview in a scrolled window so we can move up and down with a scrollbar
             self.scrolledwindow=gtk.ScrolledWindow()
-            self.scrolledwindow.add(self.treeview)
+            self.scrolledwindow.add(treeview)
             self.scrolledwindow.show()
             
+            self.treeview = treeview
+
         if True:
             self.menu_bar = _create_menubar_from_annotated_callbacks(class_with_menu_callbacks = self) 
             
@@ -196,8 +165,8 @@ class ProjectTree(geany.Plugin):
             
             if self.config_base_directory is not None:
                 ## Load in self.config_project_file_readonly
-                project_config_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_project_file_readonly)
-                self._load_project_tree(self.treeview.get_model(), project_config_ini)
+                project_tree_layout_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_tree_layout_file_readonly)
+                self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
                 
                 ## Load in session information
                 ## TODO
@@ -208,7 +177,7 @@ class ProjectTree(geany.Plugin):
         
         
     def _load_project_tree(self, model, config_file):
-        with open(config_file) as fin:
+        with open(config_file, 'r') as fin:
             config = ConfigParser.SafeConfigParser()
             config.readfp(fin)
             #print "Sections", config.sections()
@@ -248,16 +217,53 @@ class ProjectTree(geany.Plugin):
                     ### Descend with parent=iter
                     self._load_project_tree_branch(model, config, section+'/'+g, iter)
                     
+    def _save_project_tree(self, model, config_file):
+        config = ConfigParser.SafeConfigParser()
+        
+        ## Now walk along the whole 'model', creating groups = sections, and files as we go
+        iter_root = model.get_iter_root()
+        self._save_project_tree_branch(model, config, iter_root, '.')
+        
+        with open(config_file, 'w') as fout:
+            config.write(fout)
+            
+    def _save_project_tree_branch(self, model, config, iter, path_to_parent):
+        config.add_section(path_to_parent)
+        i, finished = 0, False
+        while iter:
+            (label, actual, type,) = model.get(iter, self.TREEVIEW_VISIBLE_TEXT_COL, self.TREEVIEW_HIDDEN_TEXT_COL, self.TREEVIEW_HIDDEN_TYPE_COL)
+            if type == self.TREEVIEW_ROW_TYPE_FILE:
+                config.set(path_to_parent, "%d" % (i,), actual)
+            else:
+                config.set(path_to_parent, "%d-group" % (i,), actual)
+                iter_branch = model.iter_children(iter)
+                self._save_project_tree_branch(model, config, iter_branch, path_to_parent+'/'+actual)
+            
+            i += 1
+            iter = model.iter_next(iter)
+        
+                    
+                    
     #############  menubar functions START #############  
                     
     ## Annotation style for menubar callbacks :
     # _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
-    def _menubar_0_File_0_Load_Session(self, data):
-        print "_menubar_0_File_0_LoadSession"
+    
+    def _menubar_0_File_0_Save_Project_Tree(self, data):
+        print "_menubar_0_File_0_Save_Project_Tree"
+        model = self.treeview.get_model()
+        project_tree_layout_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_tree_layout_file)
+        self._save_project_tree(model, project_tree_layout_ini)
         return True
         
-    def _menubar_0_File_1_Save_Session(self, data):
-        print "_menubar_0_File_1_SaveSession"
+    def _menubar_0_File_4_SEPARATOR(self): pass
+    
+    def _menubar_0_File_5_Load_Session(self, data):
+        print "_menubar_0_File_5_Load_Session"
+        return True
+        
+    def _menubar_0_File_6_Save_Session(self, data):
+        print "_menubar_0_File_6_Save_Session"
         return True
         
     def _menubar_1_Search_0_Find_in_Project_Files(self, data):
@@ -1036,11 +1042,9 @@ def _create_menubar_from_annotated_callbacks(class_with_menu_callbacks):
         if m:
             if m.group(2) != menu_current_title:
                 menu_current_title = m.group(2)
-                menubar_headers.append(dict(label=menu_current_title, submenu=[]))
-            menubar_headers[-1]['submenu'].append(dict(
-              label=m.group(4).replace('_',' '),
-              fn=k,
-            ))
+                menubar_headers.append(dict(label=menu_current_title, submenu=[], ))
+            label = m.group(4).replace('_',' ')
+            menubar_headers[-1]['submenu'].append(dict( label=label, fn=k, ))
     #print menubar_headers
     
     menu_bar = gtk.MenuBar()
@@ -1050,8 +1054,11 @@ def _create_menubar_from_annotated_callbacks(class_with_menu_callbacks):
         
         # Create the submenu items
         for submenu_item in menubar_header['submenu']:
-            item = gtk.MenuItem(submenu_item['label'])
-            item.connect_object("activate", getattr(class_with_menu_callbacks, submenu_item['fn']), submenu_item['fn'])
+            if submenu_item['label'] == 'SEPARATOR':
+                item = gtk.SeparatorMenuItem()
+            else:
+                item = gtk.MenuItem(submenu_item['label'])
+                item.connect_object("activate", getattr(class_with_menu_callbacks, submenu_item['fn']), submenu_item['fn'])
             menu.append(item)
             item.show()
     
