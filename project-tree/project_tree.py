@@ -237,7 +237,7 @@ class ProjectTree(geany.Plugin):
             
     def _save_project_tree_branch(self, model, config, section, iter):
         config.add_section(section)
-        i, finished = 0, False
+        i, finished = 10, False
         while iter:
             (label, actual, type,) = model.get(iter, self.TREEVIEW_VISIBLE_TEXT_COL, self.TREEVIEW_HIDDEN_TEXT_COL, self.TREEVIEW_HIDDEN_TYPE_COL)
             if type == self.TREEVIEW_ROW_TYPE_FILE:
@@ -247,7 +247,7 @@ class ProjectTree(geany.Plugin):
                 iter_branch = model.iter_children(iter)
                 self._save_project_tree_branch(model, config, section+'/'+actual, iter_branch)
             
-            i += 1
+            i += 10 # Give room for manual insertion in ini file
             iter = model.iter_next(iter)
         
     #############  project-tree ini file functions END #############  
