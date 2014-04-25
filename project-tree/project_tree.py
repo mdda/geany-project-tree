@@ -112,16 +112,17 @@ class ProjectTree(geany.Plugin):
             #self.treeview.enable_model_drag_dest(                        targets, gtk.gdk.ACTION_MOVE) #ACTION_DEFAULT
             self.treeview.drag_dest_set(gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP, targets, gtk.gdk.ACTION_MOVE) 
             self.treeview.connect('drag_motion',        self._drag_motion)
-            self.treeview.connect('drag_drop',          self._drag_drop)
+            #self.treeview.connect('drag_drop',          self._drag_drop)
             self.treeview.connect("drag_data_received", self._drag_data_received)
             
-            #self.treeview.drag_dest_set( gtk.DEST_DEFAULT_MOTION | gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP, targets, gtk.gdk.ACTION_MOVE)
-
-
+            ## Clicking actions
             self.treeview.connect('row-activated', self.treeview_row_activated)
             #self.treeview.connect('select-cursor-row', self.treeview_select_cursor_row)
             #self.treeview.connect("row-expanded", self.treeview_row_expanded)
+            
+            ## Popup actions
             self.treeview.connect('button_press_event', self.treeview_button_press_event)
+            
             #self.treeview.set_headers_visible(True)
             self.treeview.set_headers_visible(False)
 
@@ -130,9 +131,6 @@ class ProjectTree(geany.Plugin):
             #~ treeView.cell[2].set_property('font-desc', fontT)
             #~ treeView.cell[3].set_property('font-desc', fontO)
 
-            #column0.pack_start(text_renderer, False)
-            #column0.set_resizable(False)
-
             pix_renderer = gtk.CellRendererPixbuf()
             text_renderer= gtk.CellRendererText()
 
@@ -140,22 +138,11 @@ class ProjectTree(geany.Plugin):
             #column0.set_title('Icons & Text')
             ## This is for setting an icon - which we won't be showing anyway
             #column0.set_cell_data_func(pix_renderer, self.render_icon_remote)
-
-            #column0.add_attribute(pix_renderer, 'pixbuf', 0)
-            #column0.set_attributes(pix_renderer, text=0)
-            #column0.pack_start(pix_renderer, True)
-
-            ## Unnecessary?
-            #column0.add_attribute(text_renderer, 'text', 0)
-            #column0.set_attributes(text_renderer, text=0)
-            #column0.pack_start(text_renderer, True)
-
-            #column1=gtk.TreeViewColumn("Project List",pix_renderer,text=1)
-            #column1.set_resizable(True)
-            #column1.pack_start(pix_renderer,True)
+            
+            #column0.pack_start(text_renderer, False)
+            #column0.set_resizable(False)
 
             self.treeview.append_column(column0)
-            #self.treeview.append_column(column1)
             self.treeview.show()
 
             #put treeview in a scrolled window so we can move up and down with a scrollbar
@@ -363,10 +350,10 @@ class ProjectTree(geany.Plugin):
         drag_context.drag_status(gtk.gdk.ACTION_MOVE, eventtime)
         return True # i.e. this has been handled
 
-    ### See : http://www.pygtk.org/pygtk2tutorial/ch-DragAndDrop.html
-    def _drag_drop(self, treeview, drag_context, x, y, eventtime):
-        print "drag_drop"
-        return True
+    #### See : http://www.pygtk.org/pygtk2tutorial/ch-DragAndDrop.html
+    #def _drag_drop(self, treeview, drag_context, x, y, eventtime):
+    #    print "drag_drop"
+    #    return True
         
     def _drag_data_received(self, treeview, drag_context, x, y, selection_data, info, eventtime):
         print "drag_data_received_data data-type = ", selection_data.get_data_type(), eventtime
@@ -422,82 +409,17 @@ class ProjectTree(geany.Plugin):
                     #return False
                     
                 else:
-                    source_row = model[source_iter]
-                    if drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE:
-                        new_iter = model.prepend(parent=target_iter, row=source_row)
-                    elif drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER:
-                        new_iter = model.append(parent=target_iter, row=source_row)
-                    elif drop_position == gtk.TREE_VIEW_DROP_BEFORE:
-                        new_iter = model.insert_before(parent=None, sibling=target_iter, row=source_row)
-                    elif drop_position == gtk.TREE_VIEW_DROP_AFTER:
-                        new_iter = model.insert_after(parent=None, sibling=target_iter, row=source_row)                    
+                    ## This is a recursive copy, so that groups get transferred whole
+                    _treeview_copy_row(treeview, model, source_iter, target_iter, drop_position)
                     
+                    ## Really should use the 'delete' signal, but very poorly documented
                     model.remove(source_iter)
                     drag_context.finish(True, False, eventtime)
-                    #pass
-                    
-                    #if position in (gtk.TREE_VIEW_DROP_BEFORE, gtk.TREE_VIEW_DROP_INTO_OR_BEFORE):
-                    #    iter = model.insert_before(iter, data)
-                    #else:
-                     #   iter = model.insert_after(iter, data)
                     
             else:
                 print "  no drop"
         else:
             print "  Not GTK_TREE_MODEL_ROW -- no context.finish()"
-            #drag_context.finish(False, False, eventtime)                
-            
-        return True  # Not Needed?
-
-
-    """
-    ## See : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
-    def _treeview_expand_to_path(self, treeview, path):
-        ""Expand row at path, expanding any ancestors as needed.
-
-        This function is provided by gtk+ >=2.2, but it is not yet wrapped
-        by pygtk 2.0.0.""
-        print "_treeview_expand_to_path"
-        for i in range(len(path)):
-            treeview.expand_row(path[:i+1], open_all=False)
-
-    ## See : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
-    def _treeview_copy_row(self, treeview, model, source_iter, target_iter, drop_position):
-        ""Copy tree model rows from treeiter:source_iter into, before or after treeiter:target_iter.
-
-        All children of the source row are also copied and the
-        expanded/collapsed status of each row is maintained.""
-
-        print "_treeview_copy_row ", source_iter
-        source_row = model.get(source_iter)
-        if drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE:
-            new_iter = model.prepend(parent=target_iter, row=source_row)
-        elif drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER:
-            new_iter = model.append(parent=target_iter, row=source_row)
-        elif drop_position == gtk.TREE_VIEW_DROP_BEFORE:
-            new_iter = model.insert_before(parent=None, sibling=target_iter, row=source_row)
-        elif drop_position == gtk.TREE_VIEW_DROP_AFTER:
-            new_iter = model.insert_after(parent=None, sibling=target_iter, row=source_row)
-
-        # Copy any children of the source row.
-        for n in range(model.iter_n_children(source_iter)):
-            child_iter = model.iter_nth_child(source_iter, n)
-            self._treeview_copy_row(treeview, model, child_iter, new_iter, gtk.TREE_VIEW_DROP_INTO_OR_BEFORE)
-
-        # If the source row is expanded, expand the newly copied row
-        # also.  We must add at least one child before we can expand,
-        # so we expand here after the children have been copied.
-        source_is_expanded = treeview.row_expanded(model.get_path(source_iter))
-        if source_is_expanded:
-            self._treeview_expand_to_path(treeview, model.get_path(new_iter))
-    """
-
-
-
-
-
-
-
 
 
 
@@ -674,13 +596,17 @@ class ProjectTree(geany.Plugin):
             geany.document.open_file(filepath)
         
         
-    #def treeview_select_cursor_row(self, tv, treepath, tvcolumn):
+    """
+    def treeview_select_cursor_row(self, tv, treepath, tvcolumn):
+        pass
+    """
         
-        
+    """
     def treeview_row_expanded(self, treeview, iter, path):
         #self.populate_treeview_children(iter, clear=False)
         print 'expanded treeview row'
         pass #Don't really care
+    """
 
     def treeview_button_press_event(self, treeview, event):
         ## This gets selection, but it hasn't been updated yet...
@@ -1026,6 +952,45 @@ class ProjectTree(geany.Plugin):
         # destroy top level widgets to remove them from the UI/memory
         for widget in self.widget_destroy_stack:
             widget.destroy()
+
+
+## See : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
+def _treeview_expand_to_path(treeview, path):
+    """Expand row at path, expanding any ancestors as needed.
+
+    This function is provided by gtk+ >=2.2, but it is not yet wrapped
+    by pygtk 2.0.0."""
+    for i in range(len(path)):
+        treeview.expand_row(path[:i+1], open_all=False)
+        
+## See : http://www.daa.com.au/pipermail/pygtk/2003-November/006320.html
+def _treeview_copy_row(treeview, model, source, target, drop_position):
+    """Copy tree model rows from treeiter source into, before or after treeiter target.
+
+    All children of the source row are also copied and the
+    expanded/collapsed status of each row is maintained."""
+
+    source_row = model[source]
+    if drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE:
+        new = model.prepend(parent=target, row=source_row)
+    elif drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER:
+        new = model.append(parent=target, row=source_row)
+    elif drop_position == gtk.TREE_VIEW_DROP_BEFORE:
+        new = model.insert_before( parent=None, sibling=target, row=source_row)
+    elif drop_position == gtk.TREE_VIEW_DROP_AFTER:
+        new = model.insert_after( parent=None, sibling=target, row=source_row)
+
+    # Copy any children of the source row.
+    for n in range(model.iter_n_children(source)):
+        child = model.iter_nth_child(source, n)
+        _treeview_copy_row(treeview, model, child, new, gtk.TREE_VIEW_DROP_INTO_OR_BEFORE)
+
+    # If the source row is expanded, expand the newly copied row
+    # also.  We must add at least one child before we can expand,
+    # so we expand here after the children have been copied.
+    source_is_expanded = treeview.row_expanded(model.get_path(source))
+    if source_is_expanded:
+        _treeview_expand_to_path(treeview, model.get_path(new))
 
 
 
