@@ -149,11 +149,16 @@ class ProjectTree(geany.Plugin):
             self.scrolledwindow=gtk.ScrolledWindow()
             self.scrolledwindow.add(self.treeview)
             self.scrolledwindow.show()
-
+            
+        if True:
+            self.menu_bar = _create_menubar_from_annotated_callbacks(class_with_menu_callbacks = self) 
+            
+        if True:
             #homogeneous = False, spacing = 0
             box = gtk.VBox(False, 0)
             ##expand, fill, padding
-            box.pack_start(self.scrolledwindow, True, True, 0)
+            box.pack_start(self.menu_bar, expand=False, fill=False, padding=2)
+            box.pack_end(self.scrolledwindow, expand=True, fill=True, padding=2)
             box.show()
             
             label = gtk.Label("ProjectTree")
@@ -247,6 +252,17 @@ class ProjectTree(geany.Plugin):
                     ### Descend with parent=iter
                     self._load_project_tree_branch(model, config, section+'/'+g, iter)
                     
+    
+    def _menubar_0_File_0_LoadSession(self, data):
+        print "_menubar_0_File_0_LoadSession"
+        return True
+        
+    def _menubar_0_File_1_SaveSession(self, data):
+        print "_menubar_0_File_1_SaveSession"
+        return True
+        
+        
+        
         
     def _menu_item_add_connected(self, menu, title, action):
         menu_item = gtk.MenuItem(title)
@@ -991,6 +1007,55 @@ def _treeview_copy_row(treeview, model, source, target, drop_position):
     source_is_expanded = treeview.row_expanded(model.get_path(source))
     if source_is_expanded:
         _treeview_expand_to_path(treeview, model.get_path(new))
+
+
+
+
+def _create_menubar_from_annotated_callbacks(class_with_menu_callbacks):
+    """
+    This is a nasty little function that looks through the class, and builds the menubar from 
+    the specifically formed methods of the class, and links it all up as menus, submenus and callbacks ...
+    Maybe there's a nicer way to do this using decorators
+    """
+    
+    ## Sample annotated method :  _menubar_0_File_0_LoadSession
+    attrib_matcher = re.compile("_menubar_(\d+)_(\S+)_(\d+)_(.+)")
+    menubar_headers, menu_current_title = [], ""
+    for k in sorted(dir(class_with_menu_callbacks)):
+        #print "Attr: ",k
+        m = attrib_matcher.match(k)
+        if m:
+            if m.group(2) != menu_current_title:
+                menu_current_title = m.group(2)
+                menubar_headers.append(dict(label=menu_current_title, submenu=[]))
+            menubar_headers[-1]['submenu'].append(dict(
+              label=m.group(4),
+              fn=k,
+            ))
+    #print menubar_headers
+    
+    menu_bar = gtk.MenuBar()
+    for menubar_header in menubar_headers:
+        menu = gtk.Menu()    # Don't need to show menus
+        menu_item = gtk.MenuItem(menubar_header['label'])
+        
+        # Create the submenu items
+        for submenu_item in menubar_header['submenu']:
+            item = gtk.MenuItem(submenu_item['label'])
+            item.connect_object("activate", getattr(class_with_menu_callbacks, submenu_item['fn']), submenu_item['fn'])
+            menu.append(item)
+            item.show()
+    
+        menu_item.set_submenu(menu)
+        menu_item.show()
+        
+        menu_bar.append(menu_item)
+    menu_bar.show()
+    return  menu_bar
+    
+
+
+
 
 
 
