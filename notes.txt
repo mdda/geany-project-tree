@@ -28,8 +28,8 @@ DONE  1-Click on path == just change selection (== noop in signal handler)
 DONE  Drag-and-Drop for files and groups
 DONE  Save current layout in a config_tree_layout_file
 
-Auto menubar populator from annotated class.method names
-Auto popup populator from annotated class.method names
+DONE  Auto menubar populator from annotated class.method names
+DONE  Auto popup populator from annotated class.method names
 
 3-Click : Add new group 'here'
 3-Click : Add current file 'here'
@@ -40,9 +40,6 @@ Auto popup populator from annotated class.method names
 Save current files in a config_session_file
 Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
 
-
-Any-Click blank space => menu_empty.  Option to add current file to end of list
-Any-Click blank space => menu_empty.  Option to add new group to end of list
 
 If no .geany/, offer to create one
 
@@ -55,7 +52,6 @@ Save session on close?
 Save project on close?
 
 Ask about .geany path : GtkWidget* ui_path_box_new	(	const gchar * 	title, GtkFileChooserAction 	action, GtkEntry * 	entry )		
-
 
 Load session_default.ini file if it's in .geany and no session.ini exists
 
