@@ -161,21 +161,27 @@ class ProjectTree(geany.Plugin):
                     ## recurse, search for .git, etc
                     # ...
                     ## Finally : prompt for base directory for .geany file
+                    
                     pass
             
             if self.config_base_directory is not None:
-                ## Load in self.config_project_file_readonly
-                project_tree_layout_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_tree_layout_file_readonly)
-                self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
+                project_tree_layout_ini = None
+                for f in [self.config_tree_layout_file, self.config_tree_layout_file_readonly]:
+                    file = os.path.join(self.config_base_directory, self.config_sub_directory, f)
+                    if os.path.isfile(file):
+                        project_tree_layout_ini = file
+                        break
+                    
+                if project_tree_layout_ini is not None:
+                    self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
                 
                 ## Load in session information
                 ## TODO
                 pass
-        
-        #geany.signals.connect('document-activate', self.document_changed)
-        #self.detector=detect()
-        
-        
+
+
+    #############  project-tree ini file functions START #############  
+
     def _load_project_tree(self, model, config_file):
         with open(config_file, 'r') as fin:
             config = ConfigParser.SafeConfigParser()
@@ -242,7 +248,7 @@ class ProjectTree(geany.Plugin):
             i += 1
             iter = model.iter_next(iter)
         
-                    
+    #############  project-tree ini file functions END #############  
                     
     #############  menubar functions START #############  
                     
