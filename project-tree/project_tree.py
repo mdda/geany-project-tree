@@ -262,6 +262,16 @@ class ProjectTree(geany.Plugin):
         
     def _popup_1_Add_Group(self, data):
         print "_popup_1_Add_Group"
+        
+        self.dialog_input_entry.set_text('')
+        self.dialog_input.set_markup('Add Group name:')
+        self.dialog_input.show_all()
+        response = self.dialog_input.run()
+        group = self.dialog_input_entry.get_text()
+        self.dialog_input.hide_all()
+        if response == gtk.RESPONSE_OK and len(group)>0:
+            print "Adding Group : '%s'" % (group,)
+            
         return True
     
     def _popup_2_Add_Current_File(self, data):
@@ -272,9 +282,23 @@ class ProjectTree(geany.Plugin):
     
     def _popup_5_Rename(self, data):
         print "_popup_5_Rename"
+        """
+        self.dialog_input_entry.set_text(self.selected_filename)
+        self.dialog_input.set_markup('Rename File/Folder')
+        self.dialog_input.show_all()
+        response = self.dialog_input.run()
+        newfilename = self.selected_filepath + self.dialog_input_entry.get_text()
+        self.dialog_input.hide_all()
+        print 'from ' + str(self.selected_fullpath)
+        print 'to ' + str(newfilename)
+        if not os.path.exists(newfilename):
+            print os.rename(self.selected_fullpath, newfilename)
+        """
         return True
+        
     def _popup_6_Delete(self, data):
         print "_popup_6_Delete"
+        ## ARE YOU SURE?
         return True
         
     ### Popup click handler ###
@@ -296,34 +320,6 @@ class ProjectTree(geany.Plugin):
             return True
         return False
     #############  popup functions END #############  
-        
-    def tree_add_group(self, *args):
-        print "tree_add_group"
-        
-        self.dialog_input_entry.set_text('')
-        self.dialog_input.set_markup('Add Group name:')
-        self.dialog_input.show_all()
-        response = self.dialog_input.run()
-        group = self.dialog_input_entry.get_text()
-        self.dialog_input.hide_all()
-        if response == gtk.RESPONSE_OK and len(group)>0:
-            print "Adding Group : '%s'" % (group,)
-            #if not os.path.isdir(self.selected_fullpath):
-            #    print newfilename
-            #    shutil.copyfile(self.selected_fullpath, newfilename)
-            #    geany.document.open_file(newfilename)
-        """
-        self.dialog_input_entry.set_text(self.selected_filename)
-        self.dialog_input.set_markup('Rename File/Folder')
-        self.dialog_input.show_all()
-        response = self.dialog_input.run()
-        newfilename = self.selected_filepath + self.dialog_input_entry.get_text()
-        self.dialog_input.hide_all()
-        print 'from ' + str(self.selected_fullpath)
-        print 'to ' + str(newfilename)
-        if not os.path.exists(newfilename):
-            print os.rename(self.selected_fullpath, newfilename)
-        """
 
 
     def tree_add_current_file(self, *args):
