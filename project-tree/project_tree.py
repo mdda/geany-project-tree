@@ -309,12 +309,44 @@ class ProjectTree(geany.Plugin):
                 ## This is not hovering over something
                 path = None
             
-            self.menu_popup.show()
             ## See: https://developer.gnome.org/pygtk/stable/class-gtkmenu.html#method-gtkmenu--popup
+            #self.menu_popup.show()
             self.menu_popup.popup(None,None,None, event.button, event.time, data=path)
             return True
         return False
     #############  popup functions END #############  
+        
+    def tree_add_group(self, *args):
+        print "tree_add_group"
+        
+        self.dialog_input_entry.set_text('')
+        self.dialog_input.set_markup('Add Group name:')
+        self.dialog_input.show_all()
+        response = self.dialog_input.run()
+        group = self.dialog_input_entry.get_text()
+        self.dialog_input.hide_all()
+        if response == gtk.RESPONSE_OK and len(group)>0:
+            print "Adding Group : '%s'" % (group,)
+            #if not os.path.isdir(self.selected_fullpath):
+            #    print newfilename
+            #    shutil.copyfile(self.selected_fullpath, newfilename)
+            #    geany.document.open_file(newfilename)
+        """
+        self.dialog_input_entry.set_text(self.selected_filename)
+        self.dialog_input.set_markup('Rename File/Folder')
+        self.dialog_input.show_all()
+        response = self.dialog_input.run()
+        newfilename = self.selected_filepath + self.dialog_input_entry.get_text()
+        self.dialog_input.hide_all()
+        print 'from ' + str(self.selected_fullpath)
+        print 'to ' + str(newfilename)
+        if not os.path.exists(newfilename):
+            print os.rename(self.selected_fullpath, newfilename)
+        """
+
+
+    def tree_add_current_file(self, *args):
+        print "tree_add_current_file"
         
         
     ### TODO : Prompt for .geany path
@@ -463,165 +495,11 @@ class ProjectTree(geany.Plugin):
 
     #############  Drag-n-Drop END #############  
 
-
-
-    def tree_add_group(self, *args):
-        print "tree_add_group"
-        
-        self.dialog_input_entry.set_text('')
-        self.dialog_input.set_markup('Add Group name:')
-        self.dialog_input.show_all()
-        response = self.dialog_input.run()
-        group = self.dialog_input_entry.get_text()
-        self.dialog_input.hide_all()
-        if response == gtk.RESPONSE_OK and len(group)>0:
-            print "Adding Group : '%s'" % (group,)
-            #if not os.path.isdir(self.selected_fullpath):
-            #    print newfilename
-            #    shutil.copyfile(self.selected_fullpath, newfilename)
-            #    geany.document.open_file(newfilename)
-        """
-        self.dialog_input_entry.set_text(self.selected_filename)
-        self.dialog_input.set_markup('Rename File/Folder')
-        self.dialog_input.show_all()
-        response = self.dialog_input.run()
-        newfilename = self.selected_filepath + self.dialog_input_entry.get_text()
-        self.dialog_input.hide_all()
-        print 'from ' + str(self.selected_fullpath)
-        print 'to ' + str(newfilename)
-        if not os.path.exists(newfilename):
-            print os.rename(self.selected_fullpath, newfilename)
-        """
-
-
-    def tree_add_current_file(self, *args):
-        print "tree_add_current_file"
-        
-
-    """
-    def menu_project(self):
-        self.popup_project_menu=[]
-
-        menu_item = gtk.MenuItem("Find in Files")
-        menu_item.connect("activate", self.file_search)
-        self.popup_project_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Close Child Documents")
-        menu_item.connect("activate", self.folder_close_children)
-        self.popup_project_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Project Config")
-        menu_item.connect("activate", self.project_configure)
-        self.popup_project_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Reload List")
-        menu_item.connect("activate", self.fake_menu)
-        self.popup_project_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Create File")
-        menu_item.connect("activate", self.file_create)
-        self.popup_project_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Create Directory")
-        menu_item.connect("activate", self.fake_menu)
-        self.popup_project_menu.append(menu_item)
-
-        for item in self.popup_project_menu:
-            self.menu.append(item)
-
-    def menu_folders(self):
-        self.popup_folder_menu=[]
-
-        menu_item = gtk.MenuItem("Find in Files")
-        menu_item.connect("activate", self.file_search)
-        self.popup_folder_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Reload List")
-        menu_item.connect("activate", self.fake_menu)
-        self.popup_folder_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Create File")
-        menu_item.connect("activate", self.file_create)
-        self.popup_folder_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Close Child Documents")
-        menu_item.connect("activate", self.folder_close_children)
-        self.popup_folder_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Create Directory")
-        menu_item.connect("activate", self.fake_menu)
-        self.popup_folder_menu.append(menu_item)
-
-        for item in self.popup_folder_menu:
-            self.menu.append(item)
-
-    def menu_files(self):
-        self.popup_file_menu=[]
-        menu_item = gtk.MenuItem("Remove file")
-        menu_item.connect("activate", self.file_remove)
-        self.popup_file_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Duplicate File")
-        menu_item.connect("activate", self.file_duplicate)
-        self.popup_file_menu.append(menu_item)
-
-        menu_item = gtk.MenuItem("Rename File")
-        menu_item.connect("activate", self.file_rename)
-        self.popup_file_menu.append(menu_item)
-
-        for item in self.popup_file_menu:
-            self.menu.append(item)
-    """
-    
-    """
-    #show hide menu items dependent on treeview selection depth
-    def show_popup_menu(self, filepath, path=()):
-        depth = len(path)
-        self.update_selected_document(filepath)
-        #self.selected_treeiter = self.treemodel.get_iter(path)
-
-        for item in self.popup_project_menu:
-            item.hide()
-
-        for item in self.popup_folder_menu:
-            item.hide()
-
-        for item in self.popup_file_menu:
-            item.hide()
-            
-        self.menu.show()
-        self.menu.popup(None,None,None,1,0)
-        if depth==1:
-            print 'menu 1'
-            for item in self.popup_project_menu:
-                item.show()
-            return None
-
-        if depth==2:
-            print 'menu 2'
-            for item in self.popup_project_menu:
-                item.show()
-            return None
-
-        if os.path.isdir(filepath):
-            print 'folder menu '
-            for item in self.popup_folder_menu:
-                print item
-                item.show()
-        else:
-            print 'file menu '
-            for item in self.popup_file_menu:
-                item.show()
-                
-        return None
-    """
-    
     def treeview_row_activated(self, treeview, path, col):
         print "Activated Tree-Path (double-clicked) ", path
         model = treeview.get_model()
         iter = model.get_iter(path)
         row = model.get(iter, self.TREEVIEW_HIDDEN_TYPE_COL, self.TREEVIEW_HIDDEN_TEXT_COL) 
-        #if self.treemodel.iter_has_child(iter): # This is a group : double-clicked
         if row[0] == self.TREEVIEW_ROW_TYPE_GROUP: # This is a group : double-clicked
             #row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
             print "Group ", row[1]
