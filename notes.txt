@@ -26,13 +26,20 @@ DONE  1-Click on file == just change selection (== noop in signal handler)
 DONE  1-Click on path == just change selection (== noop in signal handler)
 
 DONE  Drag-and-Drop for files and groups
-Save current layout in a config_tree_layout_file
+DONE  Save current layout in a config_tree_layout_file
+
+Auto menubar populator from annotated class.method names
+Auto popup populator from annotated class.method names
+
+3-Click : Add new group 'here'
+3-Click : Add current file 'here'
+3-Click : Rename this entry (group or file)
+3-Click : Delete this entry (group or file)
+
 
 Save current files in a config_session_file
 Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
 
-3-Click Add current file to end of group (menu_group)
-3-Click Add current file after this one (menu_file)
 
 Any-Click blank space => menu_empty.  Option to add current file to end of list
 Any-Click blank space => menu_empty.  Option to add new group to end of list

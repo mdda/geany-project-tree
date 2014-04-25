@@ -188,7 +188,7 @@ class ProjectTree(geany.Plugin):
             config.readfp(fin)
             #print "Sections", config.sections()
             if config.has_section('.'):
-                print "Got Root!"
+                #print "Found Root!"
                 model.clear()
                 self._load_project_tree_branch(model, config, '.', None)
                 
@@ -198,7 +198,7 @@ class ProjectTree(geany.Plugin):
         key_matcher = re.compile("(\d+)-?(\S*)")
         d=dict()
         for k,v in config.items(section):
-            print "('%s', '%s')" % (k, v)
+            #print "('%s', '%s')" % (k, v)
             m = key_matcher.match(k)
             if m:
                 order = int(m.group(1))
@@ -208,16 +208,18 @@ class ProjectTree(geany.Plugin):
             
         for k,vd in sorted(d.iteritems()):  # Here, vd is dictionary of data about each 'k' item
             if '' in vd: # This is a file (the default ending)
-                print "Got a file"
                 f = vd['']
+                #print "Got a file: %s" % (f,)
+                label = vd.get('label', os.path.basename(f))
                 ## Just add the file to the tree where we are
-                iter = model.append(parent, (os.path.basename(f), f, self.TREEVIEW_ROW_TYPE_FILE))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL, TREEVIEW_ROW_TYPE_FILE)
+                iter = model.append(parent, (label, f, self.TREEVIEW_ROW_TYPE_FILE))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL, TREEVIEW_ROW_TYPE_FILE)
                 # No need to store this 'iter' - can easily append after
                 
             else:  # This is something special
                 if 'group' in vd:
                     g = vd['group']
-                    print "Got a group : %s" % (g,)
+                    #print "Got a group : %s" % (g,)
+                    label = vd.get('label', g)
                     ## Add the group to the tree, and recursively go after that section...
                     iter = model.append(parent, (g, g, self.TREEVIEW_ROW_TYPE_GROUP))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
                     ### Descend with parent=iter
@@ -228,22 +230,22 @@ class ProjectTree(geany.Plugin):
         
         ## Now walk along the whole 'model', creating groups = sections, and files as we go
         iter_root = model.get_iter_root()
-        self._save_project_tree_branch(model, config, iter_root, '.')
+        self._save_project_tree_branch(model, config, '.', iter_root)
         
         with open(config_file, 'w') as fout:
             config.write(fout)
             
-    def _save_project_tree_branch(self, model, config, iter, path_to_parent):
-        config.add_section(path_to_parent)
+    def _save_project_tree_branch(self, model, config, section, iter):
+        config.add_section(section)
         i, finished = 0, False
         while iter:
             (label, actual, type,) = model.get(iter, self.TREEVIEW_VISIBLE_TEXT_COL, self.TREEVIEW_HIDDEN_TEXT_COL, self.TREEVIEW_HIDDEN_TYPE_COL)
             if type == self.TREEVIEW_ROW_TYPE_FILE:
-                config.set(path_to_parent, "%d" % (i,), actual)
+                config.set(section, "%d" % (i,), actual)
             else:
-                config.set(path_to_parent, "%d-group" % (i,), actual)
+                config.set(section, "%d-group" % (i,), actual)
                 iter_branch = model.iter_children(iter)
-                self._save_project_tree_branch(model, config, iter_branch, path_to_parent+'/'+actual)
+                self._save_project_tree_branch(model, config, section+'/'+actual, iter_branch)
             
             i += 1
             iter = model.iter_next(iter)
