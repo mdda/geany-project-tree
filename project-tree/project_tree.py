@@ -948,7 +948,6 @@ def _create_menu_from_annotated_callbacks(class_with_menu_callbacks, prefix = '_
     
     menu = gtk.Menu()
     for menu_header in menu_headers:
-        menu = gtk.Menu()    # Don't need to show menus
         if menu_header['label'] == 'SEPARATOR':
             item = gtk.SeparatorMenuItem()
         else:
