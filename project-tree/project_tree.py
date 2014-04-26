@@ -433,6 +433,7 @@ class ProjectTree(geany.Plugin):
             #model, data = selection.tree_get_row_drag_data()  ## This worked on a data basis
             model, source_iter = treeview.get_selection().get_selected()
             drop_info = treeview.get_dest_row_at_pos(x, y)
+            deny = False
             if drop_info:
                 target_path, drop_position = drop_info 
                 target_iter = model.get_iter(target_path)
@@ -444,7 +445,6 @@ class ProjectTree(geany.Plugin):
                 print "  drop_info = ", drop_info
                 print "  action = ", drag_context.action 
                 
-                deny = False
                 
                 if (drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE or drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER):
                     # This is dropping into something else
@@ -463,28 +463,31 @@ class ProjectTree(geany.Plugin):
                     print "      Dropped onto self"
                     deny = True
                     
-                if deny:
-                    pass
-                    print "          DENY action"
-                    #drag_context.drag_abort(eventtime)  #SEGFAULT
-                    #drag_context.drag_status(0, eventtime)
-                    #drag_context.finish(False, False, eventtime)
-                    
-                    ###  This should really deny the operation...
-                    #print "  drag_context.drop_reply(False, eventtime)"
-                    #drag_context.drop_reply(False, eventtime)
-                    #return False
-                    
-                else:
-                    ## This is a recursive copy, so that groups get transferred whole
-                    _treeview_copy_row(treeview, model, source_iter, target_iter, drop_position)
-                    
-                    ## Really should use the 'delete' signal, but very poorly documented
-                    model.remove(source_iter)
-                    drag_context.finish(True, False, eventtime)
-                    
             else:
-                print "  no drop"
+                print "  not dropped onto an existing row before/after position"
+                ### This should be an allowed action : Drop into the blank space after the current rows
+                drop_position = gtk.TREE_VIEW_DROP_INTO_OR_AFTER
+                target_iter = None
+                
+            if deny:
+                pass
+                print "          DENY action"
+                #drag_context.drag_abort(eventtime)  #SEGFAULT
+                #drag_context.drag_status(0, eventtime)
+                #drag_context.finish(False, False, eventtime)
+                
+                ###  This should really deny the operation...
+                #print "  drag_context.drop_reply(False, eventtime)"
+                #drag_context.drop_reply(False, eventtime)
+                #return False
+            else:
+                ## This is a recursive copy, so that groups get transferred whole
+                _treeview_copy_row(treeview, model, source_iter, target_iter, drop_position)
+                
+                ## Really should use the 'delete' signal, but very poorly documented
+                model.remove(source_iter)
+                drag_context.finish(True, False, eventtime)
+
         else:
             print "  Not GTK_TREE_MODEL_ROW -- no context.finish()"
 
