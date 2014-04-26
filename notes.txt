@@ -12,10 +12,7 @@ yum install python-eventlet python-psycopg2
 cd {project-tree main directory itself from git}
 ln -s `pwd`/project-tree ~/.config/geany/plugins/geanypy/plugins/
 
-
-TODO: 
-
-Click on tree title should bring up ...
+ToDos :
 
 DONE  Need to detect whether start directory contains a .geany/ folder
 DONE  Load project_sample.ini file if it's in .geany
@@ -37,17 +34,16 @@ DONE  3-Click : Add current file 'here'
 DONE  3-Click : Delete this entry (group or file)
 
 If no .geany/, offer to create one
-
-Save current files in a config_session_file
-Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
-
 If no .geany/, recurse upwards until {find a .git folder}
 If .geany found, load a project.ini file (might be added to git)
-If .geany found, load a session.ini file (probably not added to git)
-Load session_default.ini file if it's in .geany and no session.ini exists
 
 Session stores open files
+Save current files in a config_session_file
+If .geany found, load a session.ini file (probably not added to git)
+Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
+Load session_default.ini file if it's in .geany and no session.ini exists
 Goto correct line upon session load  : gboolean 	editor_goto_pos (GeanyEditor *editor, gint pos, gboolean mark)
+
 Session stores open leaves in project tree
 
 Save session on close?
