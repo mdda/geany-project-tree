@@ -34,8 +34,8 @@ DONE  Auto popup populator from annotated class.method names
 DONE  3-Click : Add new group 'here'
 DONE  3-Click : Rename this entry (group or file)
 DONE  3-Click : Add current file 'here'
+DONE  3-Click : Delete this entry (group or file)
 
-3-Click : Delete this entry (group or file)
 If no .geany/, offer to create one
 
 Save current files in a config_session_file

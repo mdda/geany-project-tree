@@ -30,8 +30,6 @@ class ProjectTree(geany.Plugin):
             self.widget_destroy_stack.extend([self.menu_popup, ])
 
         if True:  ## Set up a reusable, generic question/answer dialog box and a confirmation box
-            self.dialog_confirm = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, None)
-            
             self.dialog_input   = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK,     None)
             self.dialog_input_entry = gtk.Entry()
             
@@ -40,7 +38,7 @@ class ProjectTree(geany.Plugin):
             hbox.pack_end(self.dialog_input_entry)
             self.dialog_input.vbox.pack_end(hbox, True, True, 0)
         
-            self.widget_destroy_stack.extend([self.dialog_input, self.dialog_confirm, ])
+            self.widget_destroy_stack.extend([self.dialog_input, ])
             
         if True:  ## Set up the side-bar
             #setup treeview and treestore model
@@ -287,16 +285,22 @@ class ProjectTree(geany.Plugin):
                 row = TreeViewRowFile(text).row
             else:
                 row = TreeViewRowGroup(text).row
-            #model[iter][self.TREEVIEW_HIDDEN_TEXT_COL] = text
-            #model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = text
-            #if model[iter][self.TREEVIEW_HIDDEN_TYPE_COL] == self.TREEVIEW_ROW_TYPE_FILE:
-            #    model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = os.path.basename(text)
             model[iter] = row
         return True
         
-    def _popup_6_Delete(self, data):
-        print "_popup_6_Delete"
+    def _popup_6_Remove(self, data):
+        print "_popup_6_Remove"
+        model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
+        if iter is None : return True
+            
         ## ARE YOU SURE?
+        text_current = model[iter][TreeViewRow.COL_RAWTEXT]
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, "Remove '%s' from list?" % (text_current,))
+        response = dialog.run()
+        dialog.hide_all()
+        if response == gtk.RESPONSE_YES:
+            print "Deleting: '%s'" % (text_current,  )
+            model.remove(iter)
         return True
         
     ### Popup click handler ###
@@ -308,12 +312,8 @@ class ProjectTree(geany.Plugin):
             if path_at_pos:
                 path, col, dx, dy = path_at_pos
                 treeview.set_cursor(path) # Move the selection under clicker
-            else: 
-                ## This is not hovering over something
-                path = None
             
             ## See: https://developer.gnome.org/pygtk/stable/class-gtkmenu.html#method-gtkmenu--popup
-            #self.menu_popup.show()
             self.menu_popup.popup(None,None,None, event.button, event.time)
             return True
         return False
