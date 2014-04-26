@@ -262,38 +262,35 @@ class ProjectTree(geany.Plugin):
         
     def _popup_1_Add_Group(self, data):
         print "_popup_1_Add_Group"
-        
-        self.dialog_input_entry.set_text('')
-        self.dialog_input.set_markup('Add Group name:')
-        self.dialog_input.show_all()
-        response = self.dialog_input.run()
-        group = self.dialog_input_entry.get_text()
-        self.dialog_input.hide_all()
+        response, group = self.quick_dialog(markup='Add Group :', text='')
         if response == gtk.RESPONSE_OK and len(group)>0:
             print "Adding Group : '%s'" % (group,)
-            
+            model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
+            row = ( group, group, self.TREEVIEW_ROW_TYPE_GROUP )
+            model.insert_after( parent=None, sibling=iter, row=row)
         return True
     
     def _popup_2_Add_Current_File(self, data):
         print "_popup_2_Add_Current_File"
+        ## if there is a current file in geany
+        
+        ## insert it after
         return True
         
     def _popup_4_SEPARATOR(self, data): pass
     
     def _popup_5_Rename(self, data):
         print "_popup_5_Rename"
-        """
-        self.dialog_input_entry.set_text(self.selected_filename)
-        self.dialog_input.set_markup('Rename File/Folder')
-        self.dialog_input.show_all()
-        response = self.dialog_input.run()
-        newfilename = self.selected_filepath + self.dialog_input_entry.get_text()
-        self.dialog_input.hide_all()
-        print 'from ' + str(self.selected_fullpath)
-        print 'to ' + str(newfilename)
-        if not os.path.exists(newfilename):
-            print os.rename(self.selected_fullpath, newfilename)
-        """
+        model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
+        if iter is None : return True
+        text_current = model[iter][self.TREEVIEW_HIDDEN_TEXT_COL]
+        response, text = self.quick_dialog(markup='Rename:', text=text_current)
+        if response == gtk.RESPONSE_OK and len(text)>0:
+            print "Renaming: '%s' to '%s'" % (text_current, text, )
+            model[iter][self.TREEVIEW_HIDDEN_TEXT_COL] = text
+            model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = text
+            if model[iter][self.TREEVIEW_HIDDEN_TYPE_COL] == self.TREEVIEW_ROW_TYPE_FILE:
+                model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = os.path.basename(text)
         return True
         
     def _popup_6_Delete(self, data):
@@ -316,15 +313,19 @@ class ProjectTree(geany.Plugin):
             
             ## See: https://developer.gnome.org/pygtk/stable/class-gtkmenu.html#method-gtkmenu--popup
             #self.menu_popup.show()
-            self.menu_popup.popup(None,None,None, event.button, event.time, data=path)
+            self.menu_popup.popup(None,None,None, event.button, event.time)
             return True
         return False
     #############  popup functions END #############  
 
+    def quick_dialog(self, markup='Markup Text', text='Input Field Text'):
+        self.dialog_input_entry.set_text(text)
+        self.dialog_input.set_markup(markup)
+        self.dialog_input.show_all()
+        response = self.dialog_input.run()
+        self.dialog_input.hide_all()
+        return response, self.dialog_input_entry.get_text()
 
-    def tree_add_current_file(self, *args):
-        print "tree_add_current_file"
-        
         
     ### TODO : Prompt for .geany path
     def menu_empty_action_test(self, *args):

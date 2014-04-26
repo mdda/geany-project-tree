@@ -31,9 +31,9 @@ DONE  Save current layout in a config_tree_layout_file
 DONE  Auto menubar populator from annotated class.method names
 DONE  Auto popup populator from annotated class.method names
 
-3-Click : Add new group 'here'
+DONE  3-Click : Add new group 'here'
+DONE  3-Click : Rename this entry (group or file)
 3-Click : Add current file 'here'
-3-Click : Rename this entry (group or file)
 3-Click : Delete this entry (group or file)
 
 
