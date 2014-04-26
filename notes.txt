@@ -33,27 +33,26 @@ DONE  Auto popup populator from annotated class.method names
 
 DONE  3-Click : Add new group 'here'
 DONE  3-Click : Rename this entry (group or file)
-3-Click : Add current file 'here'
-3-Click : Delete this entry (group or file)
+DONE  3-Click : Add current file 'here'
 
+3-Click : Delete this entry (group or file)
+If no .geany/, offer to create one
 
 Save current files in a config_session_file
 Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
 
-
-If no .geany/, offer to create one
-
 If no .geany/, recurse upwards until {find a .git folder}
 If .geany found, load a project.ini file (might be added to git)
 If .geany found, load a session.ini file (probably not added to git)
+Load session_default.ini file if it's in .geany and no session.ini exists
+
 Session stores open files
+Goto correct line upon session load  : gboolean 	editor_goto_pos (GeanyEditor *editor, gint pos, gboolean mark)
 Session stores open leaves in project tree
+
 Save session on close?
 Save project on close?
 
 Ask about .geany path : GtkWidget* ui_path_box_new	(	const gchar * 	title, GtkFileChooserAction 	action, GtkEntry * 	entry )		
 
-Load session_default.ini file if it's in .geany and no session.ini exists
-
-Goto correct line upon session load  : gboolean 	editor_goto_pos (GeanyEditor *editor, gint pos, gboolean mark)
 geany initial path : GeanyDocument * 	document_get_current (void)
