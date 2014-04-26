@@ -20,13 +20,6 @@ class ProjectTree(geany.Plugin):
     config_session_file               = "session.ini"
     config_session_file_initial       = "session_default.ini"
     
-    TREEVIEW_VISIBLE_TEXT_COL = 0
-    TREEVIEW_HIDDEN_TEXT_COL = 1
-    TREEVIEW_HIDDEN_TYPE_COL = 2  
-    
-    TREEVIEW_ROW_TYPE_FILE = 0
-    TREEVIEW_ROW_TYPE_GROUP = 1
-
     widget_destroy_stack = []
     
     def __init__(self):
@@ -50,14 +43,11 @@ class ProjectTree(geany.Plugin):
             self.widget_destroy_stack.extend([self.dialog_input, self.dialog_confirm, ])
             
         if True:  ## Set up the side-bar
-            treemodel = gtk.TreeStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_INT)
             #setup treeview and treestore model
-            #self.treemodel.connect("cursor-changed", self.populate_treeview)
-            
+            treemodel = gtk.TreeStore(*TreeViewRow.TYPES)
             treeview = gtk.TreeView(treemodel)
             treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
             treeview.set_headers_visible(False)
-            
             
             ## http://python.6.x6.nabble.com/Treeview-drag-drop-chap14-td1939736.html
             targets = [
@@ -164,7 +154,6 @@ class ProjectTree(geany.Plugin):
                 #print "Found Root!"
                 model.clear()
                 self._load_project_tree_branch(model, config, '.', None)
-                
                             
     def _load_project_tree_branch(self, model, config, section, parent):
         ## Create a nice dictionary of stuff from this section - each integer(sorted) can contain several entries
@@ -181,22 +170,17 @@ class ProjectTree(geany.Plugin):
             
         for k,vd in sorted(d.iteritems()):  # Here, vd is dictionary of data about each 'k' item
             if '' in vd: # This is a file (the default ending)
-                f = vd['']
-                #print "Got a file: %s" % (f,)
-                label = vd.get('label', os.path.basename(f))
                 ## Just add the file to the tree where we are
-                iter = model.append(parent, (label, f, self.TREEVIEW_ROW_TYPE_FILE))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL, TREEVIEW_ROW_TYPE_FILE)
+                iter = model.append(parent, TreeViewRowFile(vd[''], label=vd.get('label', None)).row)
                 # No need to store this 'iter' - can easily append after
                 
             else:  # This is something special
                 if 'group' in vd:
-                    g = vd['group']
-                    #print "Got a group : %s" % (g,)
-                    label = vd.get('label', g)
+                    group = vd['group']
                     ## Add the group to the tree, and recursively go after that section...
-                    iter = model.append(parent, (g, g, self.TREEVIEW_ROW_TYPE_GROUP))  # (TREEVIEW_VISIBLE_TEXT_COL, TREEVIEW_HIDDEN_TEXT_COL)
+                    iter = model.append(parent, TreeViewRowGroup(group, label=vd.get('label', None)).row)
                     ### Descend with parent=iter
-                    self._load_project_tree_branch(model, config, section+'/'+g, iter)
+                    self._load_project_tree_branch(model, config, section+'/'+group, iter)
                     
     def _save_project_tree(self, model, config_file):
         config = ConfigParser.SafeConfigParser()
@@ -212,8 +196,9 @@ class ProjectTree(geany.Plugin):
         config.add_section(section)
         i, finished = 10, False
         while iter:
-            (label, actual, type,) = model.get(iter, self.TREEVIEW_VISIBLE_TEXT_COL, self.TREEVIEW_HIDDEN_TEXT_COL, self.TREEVIEW_HIDDEN_TYPE_COL)
-            if type == self.TREEVIEW_ROW_TYPE_FILE:
+            row = model[iter]
+            actual = row[TreeViewRow.COL_RAWTEXT]
+            if row[TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_FILE:
                 config.set(section, "%d" % (i,), actual)
             else:
                 config.set(section, "%d-group" % (i,), actual)
@@ -266,15 +251,22 @@ class ProjectTree(geany.Plugin):
         if response == gtk.RESPONSE_OK and len(group)>0:
             print "Adding Group : '%s'" % (group,)
             model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
-            row = ( group, group, self.TREEVIEW_ROW_TYPE_GROUP )
-            model.insert_after( parent=None, sibling=iter, row=row)
+            model.insert_after( parent=None, sibling=iter, row=TreeViewRowGroup(group).row)
         return True
     
     def _popup_2_Add_Current_File(self, data):
         print "_popup_2_Add_Current_File"
-        ## if there is a current file in geany
-        
-        ## insert it after
+        doc = geany.document.get_current()
+        if doc is not None:
+            #print "Document filename= ", doc.file_name
+            file = doc.file_name 
+            if file is not None: 
+                file_relative = os.path.join(
+                                          os.path.relpath(os.path.dirname(self.config_base_directory), os.path.dirname(file)),
+                                          os.path.basename(file)
+                                        )
+                model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
+                model.insert_after( parent=None, sibling=iter, row=TreeViewRowFile(file_relative).row)
         return True
         
     def _popup_4_SEPARATOR(self, data): pass
@@ -283,14 +275,19 @@ class ProjectTree(geany.Plugin):
         print "_popup_5_Rename"
         model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
         if iter is None : return True
-        text_current = model[iter][self.TREEVIEW_HIDDEN_TEXT_COL]
+        text_current = model[iter][TreeViewRow.COL_RAWTEXT]
         response, text = self.quick_dialog(markup='Rename:', text=text_current)
         if response == gtk.RESPONSE_OK and len(text)>0:
             print "Renaming: '%s' to '%s'" % (text_current, text, )
-            model[iter][self.TREEVIEW_HIDDEN_TEXT_COL] = text
-            model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = text
-            if model[iter][self.TREEVIEW_HIDDEN_TYPE_COL] == self.TREEVIEW_ROW_TYPE_FILE:
-                model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = os.path.basename(text)
+            if model[iter][TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_FILE:
+                row = TreeViewRowFile(text).row
+            else:
+                row = TreeViewRowGroup(text).row
+            #model[iter][self.TREEVIEW_HIDDEN_TEXT_COL] = text
+            #model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = text
+            #if model[iter][self.TREEVIEW_HIDDEN_TYPE_COL] == self.TREEVIEW_ROW_TYPE_FILE:
+            #    model[iter][self.TREEVIEW_VISIBLE_TEXT_COL] = os.path.basename(text)
+            model[iter] = row
         return True
         
     def _popup_6_Delete(self, data):
@@ -431,9 +428,9 @@ class ProjectTree(geany.Plugin):
                 
                 if (drop_position == gtk.TREE_VIEW_DROP_INTO_OR_BEFORE or drop_position == gtk.TREE_VIEW_DROP_INTO_OR_AFTER):
                     # This is dropping into something else
-                    row_type, = model.get(target_iter, self.TREEVIEW_HIDDEN_TYPE_COL)
-                    print "      Target being dropped INTO something", row_type
-                    if row_type == self.TREEVIEW_ROW_TYPE_FILE:
+                    row_type, = model.get(target_iter, TreeViewRow.COL_TYPE)
+                    print "      Target being dropped INTO something : ", row_type
+                    if row_type == TreeViewRow.TYPE_FILE:
                         # Can't drop anything into a file
                         print "      Target being dropped INTO is a file!"
                         deny = True
@@ -477,17 +474,15 @@ class ProjectTree(geany.Plugin):
         print "Activated Tree-Path (double-clicked) ", path
         model = treeview.get_model()
         iter = model.get_iter(path)
-        row = model.get(iter, self.TREEVIEW_HIDDEN_TYPE_COL, self.TREEVIEW_HIDDEN_TEXT_COL) 
-        if row[0] == self.TREEVIEW_ROW_TYPE_GROUP: # This is a group : double-clicked
-            #row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
-            print "Group ", row[1]
+        row = model[iter]
+        if row[TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_GROUP: # This is a group : double-clicked
+            print "Group ", row[TreeViewRow.COL_RAWTEXT]
             if treeview.row_expanded(path):
                 treeview.collapse_row(path)
             else:
                 treeview.expand_row(path, False)
         else:                                   # This is a file : double-clicked
-            #row = self.treemodel.get(iter, self.TREEVIEW_HIDDEN_TEXT_COL) 
-            file = row[1]
+            file = row[TreeViewRow.COL_RAWTEXT]  # This is a relative path
             print "OPEN FILE     ", file
             filepath = os.path.join(self.config_base_directory, file)
             geany.document.open_file(filepath)
@@ -922,7 +917,7 @@ def _create_menu_from_annotated_callbacks(class_with_menu_callbacks, prefix = '_
         if m:
             label = m.group(2).replace('_',' ')
             menu_headers.append(dict( label=label, fn=k, ))
-    print menu_headers
+    #print menu_headers
     
     menu = gtk.Menu()
     for menu_header in menu_headers:
@@ -936,6 +931,40 @@ def _create_menu_from_annotated_callbacks(class_with_menu_callbacks, prefix = '_
     
     menu.show()
     return menu    
+
+#############  treeview row helper class START #############  
+class TreeViewRow:
+    # These are the defined column numbers for the data fields
+    COL_LABEL   =0
+    COL_RAWTEXT =1 
+    COL_TYPE    =2
+    # These are the Types referred to in the column COL_TYPE
+    TYPE_FILE   =0
+    TYPE_GROUP  =1
+    # These are the type definitions, for creating the viewtable itself
+    TYPES = (gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_INT)
+    
+    # This is the contents of a row (for easy construction)
+    row = ( None, None, None )
+    
+    ## Sufficient to use model[iter] directly, as long as accesses use the above COL_ constants
+    #def __init__(self): return 
+    #def from_model(self, model, iter):
+    #    #print "model = ", model
+    #    #print "iter = ", iter
+    #    #(label, actual, type,) = model.get(iter, self.TREEVIEW_VISIBLE_TEXT_COL, self.TREEVIEW_HIDDEN_TEXT_COL, self.TREEVIEW_HIDDEN_TYPE_COL)
+    #    #self.row = model.get(iter, self.COL_LABEL, self.COL_RAWTEXT, self.COL_TYPE)
+    #    self.row = model[iter]
+
+class TreeViewRowFile(TreeViewRow):
+    def __init__(self, filename, label=None):
+        vis = label if label else os.path.basename(filename)
+        self.row = ( vis, filename, TreeViewRow.TYPE_FILE )
+
+class TreeViewRowGroup(TreeViewRow):
+    def __init__(self, group, label=None):
+        vis = label if label else group
+        self.row = ( vis, group, TreeViewRow.TYPE_GROUP )
 
 
 class xxx_plugin_config:
