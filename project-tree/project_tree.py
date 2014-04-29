@@ -118,6 +118,7 @@ class ProjectTree(geany.Plugin):
                 directory_geany = os.path.join(directory, self.config_sub_directory, )
                 if os.path.isdir(directory_geany):
                     self.config_base_directory=directory
+                    print "Base directory = %s" % (self.config_base_directory,)
                 else:
                     ## recurse, search for .git, etc
                     # ...
@@ -260,13 +261,16 @@ class ProjectTree(geany.Plugin):
         print "_popup_2_Add_Current_File"
         doc = geany.document.get_current()
         if doc is not None:
-            #print "Document filename= ", doc.file_name
+            print "Document filename= ", doc.file_name
             file = doc.file_name 
             if file is not None: 
+                print "self.config_base_directory = %s" % (self.config_base_directory,)
+                print "os.path.dirname(file) = %s" % (os.path.dirname(file),)
                 file_relative = os.path.join(
-                                          os.path.relpath(os.path.dirname(self.config_base_directory), os.path.dirname(file)),
+                                          os.path.relpath(self.config_base_directory, os.path.dirname(file)),
                                           os.path.basename(file)
                                         )
+                print "file_relative = %s" % (file_relative,)
                 model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
                 model.insert_after( parent=None, sibling=iter, row=TreeViewRowFile(file_relative).row)
         return True

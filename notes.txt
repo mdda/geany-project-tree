@@ -33,6 +33,8 @@ DONE  3-Click : Rename this entry (group or file)
 DONE  3-Click : Add current file 'here'
 DONE  3-Click : Delete this entry (group or file)
 
+DONE  Relative filenames should be w.r.t directory in which .geany lives
+
 If no .geany/, offer to create one
 If no .geany/, recurse upwards until {find a .git folder}
 If .geany found, load a project.ini file (might be added to git)
