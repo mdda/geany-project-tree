@@ -266,10 +266,11 @@ class ProjectTree(geany.Plugin):
             if file is not None: 
                 print "self.config_base_directory = %s" % (self.config_base_directory,)
                 print "os.path.dirname(file) = %s" % (os.path.dirname(file),)
-                file_relative = os.path.join(
-                                          os.path.relpath(self.config_base_directory, os.path.dirname(file)),
-                                          os.path.basename(file)
-                                        )
+                #file_relative = os.path.join(
+                #                          os.path.relpath(os.path.dirname(file), self.config_base_directory),
+                #                          os.path.basename(file)
+                #                        )
+                file_relative = os.path.relpath(file, self.config_base_directory)
                 print "file_relative = %s" % (file_relative,)
                 model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
                 model.insert_after( parent=None, sibling=iter, row=TreeViewRowFile(file_relative).row)
