@@ -34,7 +34,8 @@ DONE  3-Click : Add current file 'here'
 DONE  3-Click : Delete this entry (group or file)
 
 DONE  Relative filenames should be w.r.t directory in which .geany lives
-DONE  Relative filenames should be correct... (check simplification works)
+DONE  Relative filenames should be correct.
+AddGroup dialog should have OK button as default action
 
 If no .geany/, offer to create one
 If no .geany/, recurse upwards until {find a .git folder}
