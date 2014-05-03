@@ -250,7 +250,21 @@ class ProjectTree(geany.Plugin):
         
     def _popup_1_Add_Group(self, data):
         print "_popup_1_Add_Group"
-        response, group = self.quick_dialog(markup='Add Group :', text='')
+        #response, group = self.quick_dialog(markup='Add Group :', text='')
+        
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Add Group :")
+        prompt = gtk.Entry()
+        dialog.vbox.pack_end(prompt, True, True, 0)
+        if True : # Make 'enter' click on Ok
+            dialog.set_default_response(gtk.RESPONSE_OK)
+            prompt.set_activates_default(True)
+        dialog.show_all()
+        
+        response = dialog.run()
+        group = prompt.get_text()
+        dialog.hide_all()
+        
         if response == gtk.RESPONSE_OK and len(group)>0:
             print "Adding Group : '%s'" % (group,)
             model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
@@ -300,7 +314,9 @@ class ProjectTree(geany.Plugin):
             
         ## ARE YOU SURE?
         text_current = model[iter][TreeViewRow.COL_RAWTEXT]
-        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, "Remove '%s' from list?" % (text_current,))
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO,  
+                                        "Remove '%s' from list?" % (text_current,))
         response = dialog.run()
         dialog.hide_all()
         if response == gtk.RESPONSE_YES:
@@ -340,8 +356,8 @@ class ProjectTree(geany.Plugin):
         prompt = geany.ui_utils.path_box_new(None, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, entry)
 
         dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
-                                    gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, 
-                                    "Base Path for Project-Tree configuration directory")
+                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, 
+                                        "Base Path for Project-Tree configuration directory")
         dialog.vbox.pack_end(prompt, True, True, 0)
         dialog.show_all()
         
