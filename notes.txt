@@ -43,11 +43,11 @@ DONE  If .geany found, load a project.ini file (this file is "stable" enough for
 DONE  Option to Load project tree from a chosen .ini (if the .geany folder doesn't exist, for instance)
 DONE  Option to Load project tree from scitepm.xml file
 
-Session stores open files
-Save current files in a config_session_file
-If .geany found, load a session.ini file (probably not added to git)
-Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
-Load session_default.ini file if it's in .geany and no session.ini exists
+DONE  Session stores open files
+DONE  Save current files in a config_session_file
+DONE  If .geany found, load a session.ini file (probably not added to git)
+DONE  Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
+
 Goto correct line upon session load  : gboolean 	editor_goto_pos (GeanyEditor *editor, gint pos, gboolean mark)
 
 If no .geany/, recurse upwards until {find a .git folder}

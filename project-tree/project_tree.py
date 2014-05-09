@@ -134,10 +134,16 @@ class ProjectTree(geany.Plugin):
                     
                 if project_tree_layout_ini is not None:
                     self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
+
+                session_files_ini = None
+                for f in [self.config_session_file, self.config_session_file_initial]:
+                    file = os.path.join(self.config_base_directory, self.config_sub_directory, f)
+                    if os.path.isfile(file):
+                        session_files_ini = file
+                        break
                 
-                ## Load in session information
-                ## TODO
-                pass
+                if session_files_ini is not None:
+                    self._load_session_files(session_files_ini)
                 
         #geany.signals.connect('document-open', self.on_document_open)
         geany.signals.connect('document-close', self._document_close)
@@ -256,6 +262,62 @@ class ProjectTree(geany.Plugin):
                     
     #############  project-tree from SciTEpm file functions END #############  
 
+    #############  session-files ini functions START #############  
+
+    def _load_session_files(self, config_file):
+        with open(config_file, 'r') as fin:
+            config = ConfigParser.SafeConfigParser()
+            config.readfp(fin)
+            #print "Sections", config.sections()
+            
+            open_files_section = "OpenFiles"
+            if config.has_section(open_files_section):
+                key_matcher = re.compile("(\d+)-?(\S*)")
+                d=dict()
+                for k,v in config.items(open_files_section):  ## Need to sort these numerically
+                    #print "('%s', '%s')" % (k, v)
+                    m = key_matcher.match(k)
+                    if m:
+                        order = int(m.group(1))
+                        if order not in d:
+                            d[order]=dict()
+                        d[order][m.group(2)] = v
+                line_matcher = re.compile("(.*?)\:([\d\.]+)$")
+                for k,vd in sorted(d.iteritems()):  # Here, vd is dictionary of data about each 'k' item
+                    if '' in vd: # This is a file (the default type of item)
+                        file_relative = vd['']
+                        at_line = 1
+                        m = line_matcher.match(file_relative)
+                        if m:  # This only matches if there's a line number there
+                            file_relative = m.group(1)
+                            at_line = int(m.group(2))
+                        print "LOADING : file_relative:line = %s:%d" % (file_relative, at_line,)
+                        filepath = os.path.join(self.config_base_directory, file_relative)
+                        doc = geany.document.open_file(filepath)
+                        #doc.editor.goto_pos(at_line)
+                        
+    
+    def _save_session_files(self, config_file):
+        config = ConfigParser.SafeConfigParser()
+        
+        open_files_section = "OpenFiles"
+        config.add_section(open_files_section)
+        i = 0
+        for doc in geany.document.get_documents_list():
+            file = doc.file_name 
+            if file is not None: 
+                file_relative = os.path.relpath(file, self.config_base_directory)
+                at_line = 1
+                scroll_pct = doc.editor.scroll_percent
+                print "SAVING : file_relative:line=pct = %s:%d=%.2f" % (file_relative, at_line, scroll_pct)
+                config.set(open_files_section, "%d" % (i,), "%s:%d" % (file_relative, at_line))
+            i += 10
+
+        with open(config_file, 'w') as fout:
+            config.write(fout)
+        
+    #############  session-files ini functions END #############  
+    
     #############  file load/save dialogs START #############  
 
     def _prompt_for_geany_directory(self, start_dir, sub_dir, create=True):
@@ -349,8 +411,8 @@ class ProjectTree(geany.Plugin):
     
     def _menubar_0_File_5_Load_Session(self, data):
         print "_menubar_0_File_5_Load_Session"
-        session_ini = self._prompt_for_ini_file("*session*.ini")
-        self._load_session_files(self.treeview.get_model(), session_ini)
+        session_files_ini = self._prompt_for_ini_file("*session*.ini")
+        self._load_session_files(session_files_ini)
         return True
         
     def _menubar_0_File_6_Save_Session(self, data):
@@ -359,8 +421,8 @@ class ProjectTree(geany.Plugin):
             directory = os.getcwd()  # Base guess
             self.config_base_directory = self._prompt_for_geany_directory(directory, self.config_sub_directory)
         if self.config_base_directory is not None:
-            session_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_session_file)
-            self._save_session_files(model, session_ini)
+            session_files_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_session_file)
+            self._save_session_files(session_files_ini)
         return True
         
     def _menubar_1_Search_0_Find_in_Project_Files(self, data):
