@@ -270,7 +270,7 @@ class ProjectTree(geany.Plugin):
             config.readfp(fin)
             #print "Sections", config.sections()
             
-            open_files_section = "OpenFiles"
+            open_files_section = "open-files"
             if config.has_section(open_files_section):
                 key_matcher = re.compile("(\d+)-?(\S*)")
                 d=dict()
@@ -300,7 +300,7 @@ class ProjectTree(geany.Plugin):
     def _save_session_files(self, config_file):
         config = ConfigParser.SafeConfigParser()
         
-        open_files_section = "OpenFiles"
+        open_files_section = "open-files"
         config.add_section(open_files_section)
         i = 0
         for doc in geany.document.get_documents_list():
