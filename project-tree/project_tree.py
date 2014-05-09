@@ -226,6 +226,38 @@ class ProjectTree(geany.Plugin):
             i += 10 # Give room for manual insertion in ini file
             iter = model.iter_next(iter)
         
+    #############  project-tree ini file functions END #############  
+                    
+    #############  project-tree from SciTEpm file functions START #############  
+
+    def _load_project_tree_from_scitepm(self, model, config_file):
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(config_file)
+        root = tree.getroot()
+        if root is not None: 
+            print "Found SciTEpm Root!"
+            model.clear()
+            self._load_project_tree_from_scitepm_branch(model, root, None)
+                            
+    def _load_project_tree_from_scitepm_branch(self, model, root, parent):
+        for n in root:  
+            if n.tag == 'file':  # This is a file
+                ## Just add the file to the tree where we are
+                iter = model.append(parent, TreeViewRowFile(n.text, label=None).row)
+                # No need to store this 'iter' - can easily append after
+                
+            else: 
+                if n.tag == 'group':
+                    group = n.attrib.get('name')
+                    ## Add the group to the tree, and recursively go after that section...
+                    iter = model.append(parent, TreeViewRowGroup(group, label=None).row)
+                    ### Descend with parent=iter
+                    self._load_project_tree_from_scitepm_branch(model, n, iter)
+                    
+    #############  project-tree from SciTEpm file functions END #############  
+
+    #############  file load/save dialogs START #############  
+
     def _prompt_for_geany_directory(self, start_dir, sub_dir, create=True):
         dir = None
         
@@ -261,7 +293,7 @@ class ProjectTree(geany.Plugin):
             start_dir = os.path.join(self.config_base_directory, self.config_sub_directory, )
  
         entry = gtk.Entry()
-        entry.set_text(start_dir)
+        entry.set_text(os.path.join(start_dir, "*")) # Moves into the directory
         prompt = geany.ui_utils.path_box_new(None, gtk.FILE_CHOOSER_ACTION_OPEN, entry)
 
         dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
@@ -278,8 +310,8 @@ class ProjectTree(geany.Plugin):
                 return project_tree_layout_ini
         return None
 
-    #############  project-tree ini file functions END #############  
-                    
+    #############  file load/save dialogs END #############  
+    
     #############  menubar functions START #############  
                     
     ## Annotation style for menubar callbacks :
@@ -288,13 +320,15 @@ class ProjectTree(geany.Plugin):
     def _menubar_0_File_0_Load_Project_Tree(self, data):
         print "_menubar_0_File_0_Load_Project_Tree"
         project_tree_layout_ini = self._prompt_for_ini_file("*tree*.ini")
-        self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
+        if project_tree_layout_ini:
+            self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
         return True
         
     def _menubar_0_File_1_Load_Project_Tree_from_SciTEpm(self, data):
         print "_menubar_0_File_1_Load_Project_Tree_from_SciTEpm"
         project_tree_layout_scitepm = self._prompt_for_ini_file("scitepm.xml")
-        self._load_project_tree_from_scitepm(self.treeview.get_model(), project_tree_layout_scitepm)
+        if project_tree_layout_scitepm:
+            self._load_project_tree_from_scitepm(self.treeview.get_model(), project_tree_layout_scitepm)
         return True
         
     def _menubar_0_File_2_Save_Project_Tree(self, data):

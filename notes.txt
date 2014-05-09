@@ -41,13 +41,7 @@ DONE  If no .geany/, offer to create one
 DONE  Ask about .geany path : GtkWidget* ui_path_box_new	(	const gchar * 	title, GtkFileChooserAction 	action, GtkEntry * 	entry )		
 DONE  If .geany found, load a project.ini file (this file is "stable" enough for a user to want to add to git)
 DONE  Option to Load project tree from a chosen .ini (if the .geany folder doesn't exist, for instance)
-
-
-Option to Load project tree from scitepm.xml file
-
-
-If no .geany/, recurse upwards until {find a .git folder}
-
+DONE  Option to Load project tree from scitepm.xml file
 
 Session stores open files
 Save current files in a config_session_file
@@ -55,6 +49,8 @@ If .geany found, load a session.ini file (probably not added to git)
 Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
 Load session_default.ini file if it's in .geany and no session.ini exists
 Goto correct line upon session load  : gboolean 	editor_goto_pos (GeanyEditor *editor, gint pos, gboolean mark)
+
+If no .geany/, recurse upwards until {find a .git folder}
 
 Session stores open leaves in project tree
 
