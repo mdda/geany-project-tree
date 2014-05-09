@@ -1,10 +1,10 @@
 yum install geany
 
 yum install pygtk2 pygtk2-devel
-yum install glade
+#yum install glade  ## No need - we're doing this with raw GTK
 
 # For Oly's geany-project-manager
-yum install python-eventlet python-psycopg2
+## yum install python-eventlet python-psycopg2  ## No need - don't use this any more
 
 # For project-tree
 ## yum install PyYAML  ## No need - ConfigParser is in standard libraries
