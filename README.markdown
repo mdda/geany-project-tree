@@ -1,93 +1,90 @@
-GeanyPy
-=======
+Project-Tree plugin for Geany (using GeanyPy)
+=================================================
 
-Write Geany plugins in Python!
 
-*Please note:* since GeanyPy is under heavy development, the API it exposes
-may change quite drastically.  If you start using GeanyPy to write plugins,
-drop me a line and I'll do my best to not break your code.
-
-*Update:* There's now some documentation available, visit
-http://codebrainz.github.com/geanypy to read it.
-
-How it works
+Motivation
 ------------
 
-In the `src/` directory is a normal Geany plugin (`plugin.c`) which loads the
-Python interpreter.  It then loads some C Python modules (`dialogs.c`,
-`documents.c`, etc.) that interface with Geany's C API.  After that, it loads
-the `geany` Python module which is just glue/sugar-coating to make the C
-module more "Pythonic".
+This plugin gives Geany sidebar a 'project-tree' view of your files.  
 
-To write a plugin, inherit from the `geany.Plugin` class and implmenent the
-required members (see `geany/plugin.py` documentation comments).  Then put the
-plugin in a searched plugin path.  Currently two locations are search for
-plugins.  The first is `PREFIX/share/geany/geanypy/plugins` and the recommended
-location is under your personal Geany directory (usually
-`~/.config/geany/plugins/geanypy/plugins`).  To load or unload plugins, click
-the Python Plugin Manager item under the Tools menu which will appear when you
-activate GeanyPy through Geany's regular plugin manager.
+The project-tree view can be different from how they're laid out on disk : 
+Personally, I prefer to keep a 'thematic' structure to a project - 
+at the very least, it can be handy to keep files in an order not dictated by their sequence alphabetically.
 
-When GeanyPy plugin is loaded, it will add a new tab to the notebook in the
-message window area that contains an interactive Python shell with the `geany`
-module pre-imported.  You can tinker around with API with this console, for
-example:
+It is also designed to keep separate state for different project folders, with the state being stored locally, 
+so that one can put it into version control, for instance.
+
+I had previously contributed to a separate sidebar widget/app for SciTE, called SciTEpm (which is why this plugin
+contains a loader for the xml files that SciTEpm saves).
 
 
-```python
-import geany # called automatically in the built-in interactive shell
+File Layout
+------------
 
-doc = geany.document.open("/some/file/here")
+For each actual project that you have (as distinct from what Geany calls projects), typically one would 
+launch Geany from its root directory (where the .git directory is stored, for instance).
 
-print(doc.file_name)
-print(doc.file_type.display_name)
+The project-tree plugin's files are stored in a '.geany' directory (it will confirm before writing anything to disk).
 
-geany.dialogs.show_msgbox("Hello World")
+ * .geany
+   + project-tree-layout.ini
+   + session.ini
+   + [OPTIONAL: project-tree-layout_devel.ini]
+   + [OPTIONAL: session_default.ini ] 
+ * ... the rest of your files ...
 
-geany.main_widgets.window.set_title("Hello Window")
+Of these files:
+ * 'project-tree-layout.ini' will be relatively static (once the project is in mainenance mode), so could well be put into version control
+ * 'session.ini' is just a dump of open files, so is probably not sensible to put into version control
+ * 'project-tree-layout_devel.ini' is read-only, for testing
+ * 'session_default.ini' is used if session.ini doesn't exist - so could be used as a starter set of relevant files for newcomers
+ 
+ 
+Usage
+------------
 
-def on_document_open(doc):
-    print("Document '%s' was opened" % doc.file_name)
+The project-tree sidebar can be right-clicked, to get to :
+ * 'Add this file', which adds the currently open document to the project-tree
+ * 'Add group', which adds a new group heading
+ * and other functions that should be obvious
+ 
+It also allows drag-and-drop internally, so you can organize files & groups to your heart's content.
 
-geany.signals.connect('document-open', on_document_open)
+At the top of the sidebar is a quick menu, allowing you to Load/Save the Project-Tree layout, and current open files.
 
-```
+When loaded for the first time in a directory, it's immediately ready to use : It will ask whether to create the 
+'.geany' folder if you need to save the tree or the session.
+
+
+Commentary
+------------
+
+The .ini files are standard form, while enabling the storing of the full tree structure.
+
+The module contains code to 'instantly' create menus (and menubars) based upon annotated function names.  This looks 
+rather kludgy, I know, but makes it very quick to add new features, etc.
+
 
 Dependencies
 ------------
 
-To build GeanyPy you need the following dependencies:
+This plugin depends on GeanyPy. See GeanyPy's documentation/website for information on installation.
 
-* Python 2.6+ and development files (I don't think Python 3 will work).
-* Geany 0.21+ and development files (from SVN)
-* PyGTK 2.0 and development files
+On Fedora, for instance, installing GeanyPy is as simple as : 
 
-On Debian/Ubuntu, the (non-Geany) dependencies can be installed like this:
+``` bash
+# yum install geany-plugins-geanypy
 
-    $ apt-get install python python-dev python-gtk2 python-gtk2-dev
+```
 
-See Geany's documentation/website for information on compiling it from the
-Subversion or Git repositories.
 
 Installation
 ------------
 
-First you need to know where Geany is installed:
+First you need to know where GeanyPy stores its plugin directory.  Then :
 
-    $ GEANY_PREFIX=`pkg-config --variable=prefix geany`
+``` bash
+cd {project-tree directory inside this repository}
+ln -s `pwd`/project-tree ~/.config/geany/plugins/geanypy/plugins/
+```
 
-The you can install as normal:
-
-    $ ./autogen.sh
-    $ ./configure --prefix=$GEANY_PREFIX
-    $ make
-    # make install
-
-You should be able to force a specific version of Python to be used, by using
-the `PYTHON_VERSION` environment variable, but I've only tested with 2.6.6 so
-far.  I imagine 2.7 series will also work fine.
-
-Running on Windows
-------------------
-
-See `README.win32` for more information.

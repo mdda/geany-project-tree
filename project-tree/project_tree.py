@@ -29,17 +29,6 @@ class ProjectTree(geany.Plugin):
             self.menu_popup = _create_menu_from_annotated_callbacks(self, '_popup')
             self.widget_destroy_stack.extend([self.menu_popup, ])
 
-        if True:  ## Set up a reusable, generic question/answer dialog box and a confirmation box
-            self.dialog_input   = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK,     None)
-            self.dialog_input_entry = gtk.Entry()
-            
-            hbox = gtk.HBox()
-            hbox.pack_start(gtk.Label("Name:"), False, 5, 5)
-            hbox.pack_end(self.dialog_input_entry)
-            self.dialog_input.vbox.pack_end(hbox, True, True, 0)
-        
-            self.widget_destroy_stack.extend([self.dialog_input, ])
-            
         if True:  ## Set up the side-bar
             #setup treeview and treestore model
             treemodel = gtk.TreeStore(*TreeViewRow.TYPES)
@@ -440,8 +429,6 @@ class ProjectTree(geany.Plugin):
         
     def _popup_1_Add_Group(self, data):
         print "_popup_1_Add_Group"
-        #response, group = self.quick_dialog(markup='Add Group :', text='')
-        
         dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
                                         gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Add Group :")
         prompt = gtk.Entry()
@@ -487,7 +474,21 @@ class ProjectTree(geany.Plugin):
         model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
         if iter is None : return True
         text_current = model[iter][TreeViewRow.COL_RAWTEXT]
-        response, text = self.quick_dialog(markup='Rename:', text=text_current)
+        
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Rename :")
+        prompt = gtk.Entry()
+        prompt.set_text(text_current)
+        dialog.vbox.pack_end(prompt, True, True, 0)
+        if True : # Make 'enter' click on Ok
+            dialog.set_default_response(gtk.RESPONSE_OK)
+            prompt.set_activates_default(True)
+        dialog.show_all()
+        
+        response = dialog.run()
+        text = prompt.get_text()
+        dialog.hide_all()
+        
         if response == gtk.RESPONSE_OK and len(text)>0:
             print "Renaming: '%s' to '%s'" % (text_current, text, )
             if model[iter][TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_FILE:
@@ -529,39 +530,6 @@ class ProjectTree(geany.Plugin):
             return True
         return False
     #############  popup functions END #############  
-
-    def quick_dialog(self, markup='Markup Text', text='Input Field Text'):
-        self.dialog_input_entry.set_text(text)
-        self.dialog_input.set_markup(markup)
-        self.dialog_input.show_all()
-        response = self.dialog_input.run()
-        self.dialog_input.hide_all()
-        return response, self.dialog_input_entry.get_text()
-
-        
-    ### TODO : Prompt for .geany path
-    def menu_empty_action_test(self, *args):
-        entry = gtk.Entry()
-        entry.set_text(os.getcwd())
-        prompt = geany.ui_utils.path_box_new(None, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, entry)
-
-        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
-                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, 
-                                        "Base Path for Project-Tree configuration directory")
-        dialog.vbox.pack_end(prompt, True, True, 0)
-        dialog.show_all()
-        
-        response = dialog.run()
-        path = entry.get_text()
-        dialog.hide_all()
-        if response == gtk.RESPONSE_OK:
-            if len(path)>0:
-                print "RETVAL_OK = " + path
-            else:
-                print "Too Short"
-        else:
-            print "RETVAL ignored"
-            
 
     def treeview_row_activated(self, treeview, path, col):
         print "Activated Tree-Path (double-clicked) ", path

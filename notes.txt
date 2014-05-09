@@ -48,6 +48,8 @@ DONE  Save current files in a config_session_file
 DONE  If .geany found, load a session.ini file (probably not added to git)
 DONE  Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
 
+If there's no current project-tree-base-directory, then how do we do relative files??
+
 Create a suitable README.rst
 Split off this twig from 'sketchpad' git repo
 Prepare github for receiving 'geany-project-tree' repo
