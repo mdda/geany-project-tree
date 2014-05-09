@@ -37,11 +37,17 @@ DONE  Relative filenames should be w.r.t directory in which .geany lives
 DONE  Relative filenames should be correct.
 DONE  AddGroup dialog should have OK button as default action
 
-If no .geany/, offer to create one
-If no .geany/, recurse upwards until {find a .git folder}
-If .geany found, load a project.ini file (might be added to git)
+DONE  If no .geany/, offer to create one
+DONE  Ask about .geany path : GtkWidget* ui_path_box_new	(	const gchar * 	title, GtkFileChooserAction 	action, GtkEntry * 	entry )		
+DONE  If .geany found, load a project.ini file (this file is "stable" enough for a user to want to add to git)
+DONE  Option to Load project tree from a chosen .ini (if the .geany folder doesn't exist, for instance)
+
 
 Option to Load project tree from scitepm.xml file
+
+
+If no .geany/, recurse upwards until {find a .git folder}
+
 
 Session stores open files
 Save current files in a config_session_file
@@ -54,8 +60,3 @@ Session stores open leaves in project tree
 
 Save session on close?
 Save project on close? :: Not clear whether there's a suitable signal handle to latch onto
-
-
-Ask about .geany path : GtkWidget* ui_path_box_new	(	const gchar * 	title, GtkFileChooserAction 	action, GtkEntry * 	entry )		
-
-geany initial path : GeanyDocument * 	document_get_current (void)
