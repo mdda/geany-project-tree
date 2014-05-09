@@ -48,6 +48,14 @@ DONE  Save current files in a config_session_file
 DONE  If .geany found, load a session.ini file (probably not added to git)
 DONE  Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
 
+Create a suitable README.rst
+Split off this twig from 'sketchpad' git repo
+Prepare github for receiving 'geany-project-tree' repo
+Upload repo
+Check README.rst and revisions work cleanly
+Announce on geany-plugin-devel
+
+
 Goto correct line upon session load  : gboolean 	editor_goto_pos (GeanyEditor *editor, gint pos, gboolean mark)
 
 If no .geany/, recurse upwards until {find a .git folder}
