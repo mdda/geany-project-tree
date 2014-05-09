@@ -120,10 +120,8 @@ class ProjectTree(geany.Plugin):
                     self.config_base_directory=directory
                     print "Base directory = %s" % (self.config_base_directory,)
                 else:
-                    ## recurse, search for .git, etc
-                    # ...
-                    ## Finally : prompt for base directory for .geany file
-                    
+                    # Let's do this LAZILY : We'll set everything up upon save
+                    print "Base directory NOT FOUND - let's see whether the user even needs it"
                     pass
             
             if self.config_base_directory is not None:
@@ -140,11 +138,28 @@ class ProjectTree(geany.Plugin):
                 ## Load in session information
                 ## TODO
                 pass
+                
+        #geany.signals.connect('document-open', self.on_document_open)
+        geany.signals.connect('document-close', self._document_close)
+        
+        ### Does not happen
+        #geany.signals.connect('project-close', self._project_close)
+                
 
     def cleanup(self):
+        print "cleanup"
         # destroy top level widgets to remove them from the UI/memory
         for widget in self.widget_destroy_stack:
             widget.destroy()
+            
+    def _document_close(self, doc, data):
+        print "_document_close"
+        return True # Geany should continue doing its job
+            
+    #def _project_close(self):
+    #    print "_project_close"
+    #    return True # Geany should continue doing its job
+            
             
     #############  project-tree ini file functions START #############  
 
@@ -211,6 +226,58 @@ class ProjectTree(geany.Plugin):
             i += 10 # Give room for manual insertion in ini file
             iter = model.iter_next(iter)
         
+    def _prompt_for_geany_directory(self, start_dir, sub_dir, create=True):
+        dir = None
+        
+        entry = gtk.Entry()
+        entry.set_text(start_dir)
+        prompt = geany.ui_utils.path_box_new(None, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, entry)
+
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, 
+                                        "Base Path for Project-Tree configuration directory '%s'" % (sub_dir,))
+        dialog.vbox.pack_end(prompt, True, True, 0)
+        dialog.show_all()
+        
+        response = dialog.run()
+        path = entry.get_text()
+        dialog.hide_all()
+        if response == gtk.RESPONSE_OK:
+            if len(path)>0:
+                dir=path
+        
+        if dir and create:
+            directory_geany = os.path.join(dir, sub_dir)
+            if not os.path.isdir(directory_geany):
+                os.makedirs( directory_geany )
+            if not os.path.isdir(directory_geany):
+                dir=None
+        
+        return dir
+
+    def _prompt_for_ini_file(self, type):
+        start_dir = os.getcwd()  # Base guess
+        if self.config_base_directory is not None:
+            start_dir = os.path.join(self.config_base_directory, self.config_sub_directory, )
+ 
+        entry = gtk.Entry()
+        entry.set_text(start_dir)
+        prompt = geany.ui_utils.path_box_new(None, gtk.FILE_CHOOSER_ACTION_OPEN, entry)
+
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, 
+                                        "Open project-tree %s file" % (type,))
+        dialog.vbox.pack_end(prompt, True, True, 0)
+        dialog.show_all()
+        
+        response = dialog.run()
+        project_tree_layout_ini = entry.get_text()
+        dialog.hide_all()
+        if response == gtk.RESPONSE_OK:
+            if os.path.isfile(project_tree_layout_ini):
+                return project_tree_layout_ini
+        return None
+
     #############  project-tree ini file functions END #############  
                     
     #############  menubar functions START #############  
@@ -218,21 +285,48 @@ class ProjectTree(geany.Plugin):
     ## Annotation style for menubar callbacks :
     # _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
     
-    def _menubar_0_File_0_Save_Project_Tree(self, data):
-        print "_menubar_0_File_0_Save_Project_Tree"
-        model = self.treeview.get_model()
-        project_tree_layout_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_tree_layout_file)
-        self._save_project_tree(model, project_tree_layout_ini)
+    def _menubar_0_File_0_Load_Project_Tree(self, data):
+        print "_menubar_0_File_0_Load_Project_Tree"
+        project_tree_layout_ini = self._prompt_for_ini_file("*tree*.ini")
+        self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
+        return True
+        
+    def _menubar_0_File_1_Load_Project_Tree_from_SciTEpm(self, data):
+        print "_menubar_0_File_1_Load_Project_Tree_from_SciTEpm"
+        project_tree_layout_scitepm = self._prompt_for_ini_file("scitepm.xml")
+        self._load_project_tree_from_scitepm(self.treeview.get_model(), project_tree_layout_scitepm)
+        return True
+        
+    def _menubar_0_File_2_Save_Project_Tree(self, data):
+        print "_menubar_0_File_2_Save_Project_Tree"
+        if self.config_base_directory is None:
+            directory = os.getcwd()  # Base guess
+            ## recurse, search for .git, etc : in order to find most suitable location...
+            # ...
+            ## Finally (ask user) : prompt for (and create if asked) base directory for .geany file
+            self.config_base_directory = self._prompt_for_geany_directory(directory, self.config_sub_directory)
+        if self.config_base_directory is not None:
+            model = self.treeview.get_model()
+            project_tree_layout_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_tree_layout_file)
+            self._save_project_tree(model, project_tree_layout_ini)
         return True
         
     def _menubar_0_File_4_SEPARATOR(self): pass
     
     def _menubar_0_File_5_Load_Session(self, data):
         print "_menubar_0_File_5_Load_Session"
+        session_ini = self._prompt_for_ini_file("*session*.ini")
+        self._load_session_files(self.treeview.get_model(), session_ini)
         return True
         
     def _menubar_0_File_6_Save_Session(self, data):
         print "_menubar_0_File_6_Save_Session"
+        if self.config_base_directory is None:
+            directory = os.getcwd()  # Base guess
+            self.config_base_directory = self._prompt_for_geany_directory(directory, self.config_sub_directory)
+        if self.config_base_directory is not None:
+            session_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_session_file)
+            self._save_session_files(model, session_ini)
         return True
         
     def _menubar_1_Search_0_Find_in_Project_Files(self, data):
