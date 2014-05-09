@@ -49,6 +49,7 @@ DONE  If .geany found, load a session.ini file (probably not added to git)
 DONE  Load current files from config_session_file (or config_session_file_initial if it doesn't exist)
 
 If there's no current project-tree-base-directory, then how do we do relative files??
+May be best to guess the current base directory upon initial loading (or loading of a specific file)
 
 Create a suitable README.rst
 Split off this twig from 'sketchpad' git repo
