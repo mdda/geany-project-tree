@@ -61,8 +61,34 @@ Commentary
 
 The .ini files are standard form, while enabling the storing of the full tree structure.
 
+
+
 The module contains code to 'instantly' create menus (and menubars) based upon annotated function names.  This looks 
 rather kludgy, I know, but makes it very quick to add new features, etc.
+
+For example, the following creates a File dropdown (ordering can be changed numerically) with a 'Load Project Tree' entry 
+that's auto-linked to the function that requires it:
+```python
+def _menubar_0_File_0_Load_Project_Tree(self, data):
+````
+
+Annotation style for menubar callbacks :
+ *  _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
+
+
+Similarly, for right-click menu popup :
+
+```python
+    def _popup_0_SEPARATOR(self, data): pass
+        
+    def _popup_1_Add_Group(self, data):
+        print "_popup_1_Add_Group"
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Add Group :")
+```
+Annotation style for menu callbacks (normally for popups) :
+ * _popup _{order#} _{heading-label}
+    
 
 
 Dependencies

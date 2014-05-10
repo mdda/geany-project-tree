@@ -12,8 +12,9 @@ class ProjectTree(geany.Plugin):
     __plugin_description__ = "(Yet Another) Alternative to treeview and project view"
     __plugin_author__ = "Martin Andrews <martin@redcatlabs.com>"
 
-    config_base_directory = None
-    config_sub_directory         = ".geany"
+    config_base_directory = None  # This will be guessed initially
+    config_base_directory_is_guess = True
+    config_sub_directory  = ".geany"
     
     config_tree_layout_file           = "project-tree-layout.ini"
     config_tree_layout_file_readonly  = "project-tree-layout_devel.ini"
@@ -101,19 +102,21 @@ class ProjectTree(geany.Plugin):
             #print "geany.general_prefs.default_open_path=%s" % (geany.general_prefs.default_open_path, )
             
             ## Attempt to see .geany directory here
-            if self.config_base_directory is None:
-                #print "os.getcwd()=%s" % (os.getcwd(),)
+            if self.config_base_directory_is_guess:
+                #print "os.getcwd()=%s" % (os.getcwd(),)  # For geany opened from StartMenu == ~ (home directory)
                 directory = os.getcwd()
-                directory_geany = os.path.join(directory, self.config_sub_directory, )
-                if os.path.isdir(directory_geany):
-                    self.config_base_directory=directory
-                    print "Base directory = %s" % (self.config_base_directory,)
+                self.config_base_directory = directory
+                
+                if self._geany_subdir_exists():
+                    print "Base directory FOUND (is_guess=FALSE) = %s" % (self.config_base_directory,)
+                    self.config_base_directory_is_guess = False 
                 else:
                     # Let's do this LAZILY : We'll set everything up upon save
-                    print "Base directory NOT FOUND - let's see whether the user even needs it"
-                    pass
+                    print "Base directory NOT FOUND (is_guess=TRUE) - let's see whether the user even needs it"
+                    self.config_base_directory_is_guess = True
             
-            if self.config_base_directory is not None:
+            if not self.config_base_directory_is_guess:
+                ## Load project-tree ini
                 project_tree_layout_ini = None
                 for f in [self.config_tree_layout_file, self.config_tree_layout_file_readonly]:
                     file = os.path.join(self.config_base_directory, self.config_sub_directory, f)
@@ -124,6 +127,7 @@ class ProjectTree(geany.Plugin):
                 if project_tree_layout_ini is not None:
                     self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
 
+                ## Load session_files ini
                 session_files_ini = None
                 for f in [self.config_session_file, self.config_session_file_initial]:
                     file = os.path.join(self.config_base_directory, self.config_sub_directory, f)
@@ -163,64 +167,91 @@ class ProjectTree(geany.Plugin):
             config = ConfigParser.SafeConfigParser()
             config.readfp(fin)
             #print "Sections", config.sections()
+            
+            def _load_project_tree_branch(section, parent):
+                ## Create a nice dictionary of stuff from this section - each integer(sorted) can contain several entries
+                key_matcher = re.compile("(\d+)-?(\S*)")
+                d=dict()
+                for k,v in config.items(section):
+                    #print "('%s', '%s')" % (k, v)
+                    m = key_matcher.match(k)
+                    if m:
+                        order = int(m.group(1))
+                        if order not in d:
+                            d[order]=dict()
+                        d[order][m.group(2)] = v
+                    
+                for k,vd in sorted(d.iteritems()):  # Here, vd is dictionary of data about each 'k' item
+                    if '' in vd: # This is a file (the default ending)
+                        ## Just add the file to the tree where we are
+                        iter = model.append(parent, TreeViewRowFile(vd[''], label=vd.get('label', None)).row)
+                        # No need to store this 'iter' - can easily append after
+                        
+                    else:  # This is something special
+                        if 'group' in vd:
+                            group = vd['group']
+                            ## Add the group to the tree, and recursively go after that section...
+                            iter = model.append(parent, TreeViewRowGroup(group, label=vd.get('label', None)).row)
+                            ### Descend with parent=iter
+                            _load_project_tree_branch(section+'/'+group, iter)
+            
             if config.has_section('.'):
                 #print "Found Root!"
                 model.clear()
-                self._load_project_tree_branch(model, config, '.', None)
+                _load_project_tree_branch('.', None)
                             
-    def _load_project_tree_branch(self, model, config, section, parent):
-        ## Create a nice dictionary of stuff from this section - each integer(sorted) can contain several entries
-        key_matcher = re.compile("(\d+)-?(\S*)")
-        d=dict()
-        for k,v in config.items(section):
-            #print "('%s', '%s')" % (k, v)
-            m = key_matcher.match(k)
-            if m:
-                order = int(m.group(1))
-                if order not in d:
-                    d[order]=dict()
-                d[order][m.group(2)] = v
-            
-        for k,vd in sorted(d.iteritems()):  # Here, vd is dictionary of data about each 'k' item
-            if '' in vd: # This is a file (the default ending)
-                ## Just add the file to the tree where we are
-                iter = model.append(parent, TreeViewRowFile(vd[''], label=vd.get('label', None)).row)
-                # No need to store this 'iter' - can easily append after
-                
-            else:  # This is something special
-                if 'group' in vd:
-                    group = vd['group']
-                    ## Add the group to the tree, and recursively go after that section...
-                    iter = model.append(parent, TreeViewRowGroup(group, label=vd.get('label', None)).row)
-                    ### Descend with parent=iter
-                    self._load_project_tree_branch(model, config, section+'/'+group, iter)
-                    
+
     def _save_project_tree(self, model, config_file):
         config = ConfigParser.SafeConfigParser()
-        
+
+        def _save_project_tree_branch(section, iter):
+            config.add_section(section)
+            i, finished = 10, False
+            while iter:
+                row = model[iter]
+                actual = row[TreeViewRow.COL_RAWTEXT]
+                if row[TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_FILE:
+                    config.set(section, "%d" % (i,), actual)
+                else:
+                    config.set(section, "%d-group" % (i,), actual)
+                    iter_branch = model.iter_children(iter)
+                    _save_project_tree_branch(section+'/'+actual, iter_branch)
+                
+                i += 10 # Give room for manual insertion in ini file
+                iter = model.iter_next(iter)
+
         ## Now walk along the whole 'model', creating groups = sections, and files as we go
-        iter_root = model.get_iter_root()
-        self._save_project_tree_branch(model, config, '.', iter_root)
+        _save_project_tree_branch('.', model.get_iter_root())
         
         with open(config_file, 'w') as fout:
             config.write(fout)
+
+
+    def _change_base_directory(self, new_config_base_directory): ## Implicit side-effects for config_base_directory and config_base_directory_is_guess
+        old_config_base_directory = self.config_base_directory 
+        if True or old_config_base_directory != new_config_base_directory: 
+            ## Go through project-tree files, rebasing them
+            # walk along the whole 'model', rebasing all the branches too
+            model = self.treeview.get_model()
             
-    def _save_project_tree_branch(self, model, config, section, iter):
-        config.add_section(section)
-        i, finished = 10, False
-        while iter:
-            row = model[iter]
-            actual = row[TreeViewRow.COL_RAWTEXT]
-            if row[TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_FILE:
-                config.set(section, "%d" % (i,), actual)
-            else:
-                config.set(section, "%d-group" % (i,), actual)
-                iter_branch = model.iter_children(iter)
-                self._save_project_tree_branch(model, config, section+'/'+actual, iter_branch)
+            def _change_base_directory_branch(iter):
+                while iter:
+                    row = model[iter]
+                    actual = row[TreeViewRow.COL_RAWTEXT]
+                    if row[TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_FILE:
+                        TreeViewRowFile.rebase(row, old_config_base_directory, new_config_base_directory)
+                    else:
+                        iter_branch = model.iter_children(iter)
+                        _change_base_directory_branch(iter_branch)
+                    iter = model.iter_next(iter)
             
-            i += 10 # Give room for manual insertion in ini file
-            iter = model.iter_next(iter)
-        
+            _change_base_directory_branch(model.get_iter_root())
+            
+        ## All done - safe to declare new allegances
+        self.config_base_directory = new_config_base_directory
+        self.config_base_directory_is_guess = False
+
+
     #############  project-tree ini file functions END #############  
                     
     #############  project-tree from SciTEpm file functions START #############  
@@ -307,10 +338,15 @@ class ProjectTree(geany.Plugin):
         
     #############  session-files ini functions END #############  
     
+
     #############  file load/save dialogs START #############  
+    
+    def _geany_subdir_exists(self):
+        return os.path.isdir(os.path.join(self.config_base_directory, self.config_sub_directory, ))
 
     def _prompt_for_geany_directory(self, start_dir, sub_dir, create=True):
         dir = None
+        is_guess = True
         
         entry = gtk.Entry()
         entry.set_text(start_dir)
@@ -328,15 +364,16 @@ class ProjectTree(geany.Plugin):
         if response == gtk.RESPONSE_OK:
             if len(path)>0:
                 dir=path
+                is_guess = False
         
-        if dir and create:
+        if dir and create: 
             directory_geany = os.path.join(dir, sub_dir)
             if not os.path.isdir(directory_geany):
                 os.makedirs( directory_geany )
             if not os.path.isdir(directory_geany):
                 dir=None
         
-        return dir
+        return dir, is_guess
 
     def _prompt_for_ini_file(self, type):
         start_dir = os.getcwd()  # Base guess
@@ -369,28 +406,34 @@ class ProjectTree(geany.Plugin):
     # _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
     
     def _menubar_0_File_0_Load_Project_Tree(self, data):
+        """
+        Loads the project tree specified by the user in the message box
+        """
         print "_menubar_0_File_0_Load_Project_Tree"
         project_tree_layout_ini = self._prompt_for_ini_file("*tree*.ini")
         if project_tree_layout_ini:
+            self._change_base_directory(os.path.dirname(os.path.dirname(project_tree_layout_ini))) # strip off .geany/XYZ.ini
             self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
         return True
         
-    def _menubar_0_File_1_Load_Project_Tree_from_SciTEpm(self, data):
+    def _menubar_0_File_1_Import_Project_Tree_from_SciTEpm(self, data):
+        """
+        Imports the project tree from the scitepm.xml file specified by the user in the message box
+        """
         print "_menubar_0_File_1_Load_Project_Tree_from_SciTEpm"
         project_tree_layout_scitepm = self._prompt_for_ini_file("scitepm.xml")
         if project_tree_layout_scitepm:
+            self._change_base_directory(os.path.dirname(project_tree_layout_scitepm)) # strip off XYZ.xml
             self._load_project_tree_from_scitepm(self.treeview.get_model(), project_tree_layout_scitepm)
         return True
         
     def _menubar_0_File_2_Save_Project_Tree(self, data):
         print "_menubar_0_File_2_Save_Project_Tree"
-        if self.config_base_directory is None:
-            directory = os.getcwd()  # Base guess
-            ## recurse, search for .git, etc : in order to find most suitable location...
-            # ...
-            ## Finally (ask user) : prompt for (and create if asked) base directory for .geany file
-            self.config_base_directory = self._prompt_for_geany_directory(directory, self.config_sub_directory)
-        if self.config_base_directory is not None:
+        if self.config_base_directory_is_guess:
+            new_config_base_directory, self.config_base_directory_is_guess = self._prompt_for_geany_directory(self.config_base_directory, self.config_sub_directory)
+            if not self.config_base_directory_is_guess:
+                self._change_base_directory(new_config_base_directory)
+        if not self.config_base_directory_is_guess:
             model = self.treeview.get_model()
             project_tree_layout_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_tree_layout_file)
             self._save_project_tree(model, project_tree_layout_ini)
@@ -401,15 +444,18 @@ class ProjectTree(geany.Plugin):
     def _menubar_0_File_5_Load_Session(self, data):
         print "_menubar_0_File_5_Load_Session"
         session_files_ini = self._prompt_for_ini_file("*session*.ini")
-        self._load_session_files(session_files_ini)
+        if session_files_ini:
+            self._change_base_directory(os.path.dirname(os.path.dirname(session_files_ini))) # strip off .geany/XYZ-session.ini
+            self._load_session_files(session_files_ini)
         return True
         
     def _menubar_0_File_6_Save_Session(self, data):
         print "_menubar_0_File_6_Save_Session"
-        if self.config_base_directory is None:
-            directory = os.getcwd()  # Base guess
-            self.config_base_directory = self._prompt_for_geany_directory(directory, self.config_sub_directory)
-        if self.config_base_directory is not None:
+        if self.config_base_directory_is_guess:
+            new_config_base_directory, self.config_base_directory_is_guess = self._prompt_for_geany_directory(self.config_base_directory, self.config_sub_directory)
+            if not self.config_base_directory_is_guess:
+                self._change_base_directory(new_config_base_directory)
+        if not self.config_base_directory_is_guess:
             session_files_ini = os.path.join(self.config_base_directory, self.config_sub_directory, self.config_session_file)
             self._save_session_files(session_files_ini)
         return True
@@ -816,6 +862,13 @@ class TreeViewRowFile(TreeViewRow):
     def __init__(self, filename, label=None):
         vis = label if label else os.path.basename(filename)
         self.row = ( vis, filename, TreeViewRow.TYPE_FILE )
+    @staticmethod
+    def rebase(row, current_dir, new_dir):
+        file = row[TreeViewRow.COL_RAWTEXT]
+        filepath = os.path.join(current_dir, file)
+        rebased  = os.path.relpath(file, new_dir)
+        row[TreeViewRow.COL_RAWTEXT] = rebased
+        print "Rebased TreeViewRowFile( %s -> %s )" % (file, rebased,)
 
 class TreeViewRowGroup(TreeViewRow):
     def __init__(self, group, label=None):
