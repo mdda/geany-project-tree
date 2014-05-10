@@ -1,9 +1,6 @@
-Project-Tree plugin for Geany (using GeanyPy)
-=================================================
+# Project-Tree plugin for Geany
 
-
-Motivation
-------------
+## Motivation
 
 This plugin gives Geany sidebar a 'project-tree' view of your files.  
 
@@ -18,8 +15,7 @@ I had previously contributed to a separate sidebar widget/app for SciTE, called 
 contains a loader for the xml files that SciTEpm saves).
 
 
-File Layout
-------------
+## File Layout
 
 For each actual project that you have (as distinct from what Geany calls projects), typically one would 
 launch Geany from its root directory (where the .git directory is stored, for instance).
@@ -40,8 +36,7 @@ Of these files:
  * 'session_default.ini' is used if session.ini doesn't exist - so could be used as a starter set of relevant files for newcomers
  
  
-Usage
-------------
+## Usage
 
 The project-tree sidebar can be right-clicked, to get to :
  * 'Add this file', which adds the currently open document to the project-tree
@@ -56,12 +51,13 @@ When loaded for the first time in a directory, it's immediately ready to use : I
 '.geany' folder if you need to save the tree or the session.
 
 
-Commentary
-------------
+## Commentary
+
+### INI files
 
 The .ini files are standard form, while enabling the storing of the full tree structure.
 
-
+### Automagic Menubar
 
 The module contains code to 'instantly' create menus (and menubars) based upon annotated function names.  This looks 
 rather kludgy, I know, but makes it very quick to add new features, etc.
@@ -70,11 +66,22 @@ For example, the following creates a File dropdown (ordering can be changed nume
 that's auto-linked to the function that requires it:
 ```python
 def _menubar_0_File_0_Load_Project_Tree(self, data):
+    """
+    Loads the project tree specified by the user in the message box
+    """
+    print "_menubar_0_File_0_Load_Project_Tree"
+    project_tree_layout_ini = self._prompt_for_ini_file("*tree*.ini")
+    if project_tree_layout_ini:
+        self._change_base_directory(os.path.dirname(os.path.dirname(project_tree_layout_ini))) # strip off .geany/XYZ.ini
+        self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
+    return True
 ````
 
 Annotation style for menubar callbacks :
  *  _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
 
+
+### Automagic Menu
 
 Similarly, for right-click menu popup :
 
@@ -85,14 +92,15 @@ Similarly, for right-click menu popup :
         print "_popup_1_Add_Group"
         dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
                                         gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Add Group :")
+        ...
+        return True
 ```
 Annotation style for menu callbacks (normally for popups) :
  * _popup _{order#} _{heading-label}
     
 
 
-Dependencies
-------------
+## Dependencies
 
 This plugin depends on GeanyPy. See GeanyPy's documentation/website for information on installation.
 
@@ -104,8 +112,7 @@ On Fedora, for instance, installing GeanyPy is as simple as :
 ```
 
 
-Installation
-------------
+## Installation
 
 First you need to know where GeanyPy stores its plugin directory.  Then :
 
