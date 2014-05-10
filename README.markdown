@@ -8,10 +8,10 @@ The project-tree view can be different from how they're laid out on disk :
 Personally, I prefer to keep a 'thematic' structure to a project - 
 at the very least, it can be handy to keep files in an order not dictated by their sequence alphabetically.
 
-It is also designed to keep separate state for different project folders, with the state being stored locally, 
-so that one can put it into version control, for instance.
-
 ![Screenshot](./img/geany-project-tree_screenshot-1.png?raw=true)
+
+The plugin is also designed to keep separate state for different repository folders, with the state being stored locally, 
+so that one can put it into version control, for instance.
 
 I had previously contributed to a separate sidebar widget/app for SciTE, called SciTEpm (which is why this plugin
 contains a loader for the xml files that SciTEpm saves).
@@ -21,7 +21,7 @@ contains a loader for the xml files that SciTEpm saves).
 For each actual project that you have (as distinct from what Geany calls projects), typically one would 
 launch Geany from its root directory (where the .git directory is stored, for instance).
 
-The project-tree plugin's files are stored in a '.geany' directory (it will confirm before writing anything to disk).
+The project-tree plugin's files are stored in a '.geany' directory (it will confirm before writing anything to disk) :
 
  * .geany
    + project-tree-layout.ini
