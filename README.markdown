@@ -11,10 +11,10 @@ at the very least, it can be handy to keep files in an order not dictated by the
 It is also designed to keep separate state for different project folders, with the state being stored locally, 
 so that one can put it into version control, for instance.
 
+![Screenshot](./img/geany-project-tree_screenshot-1.png?raw=true)
+
 I had previously contributed to a separate sidebar widget/app for SciTE, called SciTEpm (which is why this plugin
 contains a loader for the xml files that SciTEpm saves).
-
-![Screenshot](./img/geany-project-tree_screenshot-1.png?raw=true)
 
 ## File Layout
 
@@ -58,13 +58,26 @@ When loaded for the first time in a directory, it's immediately ready to use : I
 
 The .ini files are standard form, while enabling the storing of the full tree structure.
 
-### Automagic Menubar
+
+### GTK drag-and-drop
+
+This works within the Project-Tree sidepanel.  And it was really painful to do - 
+particularly since (for instance) some drops should be disallowed :
+
+ * anything onto a file
+ * anything onto itself, or a descendent, etc
+
+Hopefully, someone that gets caught with the same problems can avoid *days* of Googling, and have a look at the code here.
+
+
+### Automagic Menubar Creation
 
 The module contains code to 'instantly' create menus (and menubars) based upon annotated function names.  This looks 
 rather kludgy, I know, but makes it very quick to add new features, etc.
 
 For example, the following creates a File dropdown (ordering can be changed numerically) with a 'Load Project Tree' entry 
 that's auto-linked to the function that requires it:
+
 ```python
 def _menubar_0_File_0_Load_Project_Tree(self, data):
     """
@@ -76,26 +89,26 @@ def _menubar_0_File_0_Load_Project_Tree(self, data):
         self._change_base_directory(os.path.dirname(os.path.dirname(project_tree_layout_ini))) # strip off .geany/XYZ.ini
         self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
     return True
-````
+```
 
 Annotation style for menubar callbacks :
  *  _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
 
+### Automagic Menu Creation
 
-### Automagic Menu
-
-Similarly, for right-click menu popup :
+Similarly, for the right-click menu popup :
 
 ```python
-    def _popup_0_SEPARATOR(self, data): pass
-        
-    def _popup_1_Add_Group(self, data):
-        print "_popup_1_Add_Group"
-        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
-                                        gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Add Group :")
-        ...
-        return True
+def _popup_0_SEPARATOR(self, data): pass
+    
+def _popup_1_Add_Group(self, data):
+    print "_popup_1_Add_Group"
+    dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
+                                    gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Add Group :")
+    
+    return True
 ```
+
 Annotation style for menu callbacks (normally for popups) :
  * _popup _{order#} _{heading-label}
     
@@ -117,7 +130,7 @@ On Fedora, for instance, installing GeanyPy is as simple as :
 
 First you need to know where GeanyPy stores its plugin directory.  Then :
 
-``` bash
+```bash
 cd {project-tree directory inside this repository}
 ln -s `pwd`/project-tree ~/.config/geany/plugins/geanypy/plugins/
 ```
