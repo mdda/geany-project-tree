@@ -14,6 +14,7 @@ so that one can put it into version control, for instance.
 I had previously contributed to a separate sidebar widget/app for SciTE, called SciTEpm (which is why this plugin
 contains a loader for the xml files that SciTEpm saves).
 
+![Screenshot](./img/geany-project-tree_screenshot-1.png?raw=true)
 
 ## File Layout
 
