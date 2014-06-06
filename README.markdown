@@ -121,14 +121,18 @@ This plugin depends on GeanyPy. See GeanyPy's documentation/website for informat
 On Fedora, for instance, installing GeanyPy is as simple as : 
 
 ``` bash
-# yum install geany-plugins-geanypy
+# yum install geany-plugins-geanypy python-devel
 
 ```
 
-
+ 
 ## Installation
 
-First you need to know where GeanyPy stores its plugin directory.  Then :
+First you need to know where GeanyPy stores its plugin directory - and that the path has been set up.
+
+As a local user on Fedora, this is done simply by running ```geany```, and making sure that the geanypy plugin is installed.
+
+Then :
 
 ```bash
 cd {project-tree directory inside this repository}
