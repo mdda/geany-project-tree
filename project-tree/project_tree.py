@@ -251,6 +251,27 @@ class ProjectTree(geany.Plugin):
         self.config_base_directory = new_config_base_directory
         self.config_base_directory_is_guess = False
 
+    def _add_docs_to_selected(self, docs):
+        model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
+        for doc in docs:
+            print "Document filename= ", doc.file_name
+            file = doc.file_name 
+            if file is not None: 
+                print "self.config_base_directory = %s" % (self.config_base_directory,)
+                print "os.path.dirname(file) = %s" % (os.path.dirname(file),)
+                #file_relative = os.path.join(
+                #                          os.path.relpath(os.path.dirname(file), self.config_base_directory),
+                #                          os.path.basename(file)
+                #                        )
+                file_relative = os.path.relpath(file, self.config_base_directory)
+                print "file_relative = %s" % (file_relative,)
+
+                if iter is None or model[iter][TreeViewRow.COL_TYPE] == TreeViewRow.TYPE_GROUP:
+                    print "  iter is a Group, add as child"
+                    model.insert_after( parent=iter, sibling=None, row=TreeViewRowFile(file_relative).row)
+                else:
+                    print "  iter is a File, add as sibling"
+                    model.insert_after( parent=model.iter_parent(iter), sibling=iter, row=TreeViewRowFile(file_relative).row)
 
     #############  project-tree ini file functions END #############  
                     
@@ -405,30 +426,30 @@ class ProjectTree(geany.Plugin):
     ## Annotation style for menubar callbacks :
     # _menubar _{order#} _{heading-label} _{submenu-order#} _{submenu-label}
     
-    def _menubar_0_File_0_Load_Project_Tree(self, data):
+    def _menubar_0_File_3_Load_Project_Tree(self, data):
         """
         Loads the project tree specified by the user in the message box
         """
-        print "_menubar_0_File_0_Load_Project_Tree"
+        print "_menubar__File__Load_Project_Tree"
         project_tree_layout_ini = self._prompt_for_ini_file("*tree*.ini")
         if project_tree_layout_ini:
             self._change_base_directory(os.path.dirname(os.path.dirname(project_tree_layout_ini))) # strip off .geany/XYZ.ini
             self._load_project_tree(self.treeview.get_model(), project_tree_layout_ini)
         return True
         
-    def _menubar_0_File_1_Import_Project_Tree_from_SciTEpm(self, data):
+    def _menubar_0_File_4_Import_Project_Tree_from_SciTEpm(self, data):
         """
         Imports the project tree from the scitepm.xml file specified by the user in the message box
         """
-        print "_menubar_0_File_1_Load_Project_Tree_from_SciTEpm"
+        print "_menubar__File__Load_Project_Tree_from_SciTEpm"
         project_tree_layout_scitepm = self._prompt_for_ini_file("scitepm.xml")
         if project_tree_layout_scitepm:
             self._change_base_directory(os.path.dirname(project_tree_layout_scitepm)) # strip off XYZ.xml
             self._load_project_tree_from_scitepm(self.treeview.get_model(), project_tree_layout_scitepm)
         return True
         
-    def _menubar_0_File_2_Save_Project_Tree(self, data):
-        print "_menubar_0_File_2_Save_Project_Tree"
+    def _menubar_0_File_0_Save_Project_Tree(self, data):
+        print "_menubar__File__Save_Project_Tree"
         if self.config_base_directory_is_guess:
             new_config_base_directory, self.config_base_directory_is_guess = self._prompt_for_geany_directory(self.config_base_directory, self.config_sub_directory)
             if not self.config_base_directory_is_guess:
@@ -439,18 +460,20 @@ class ProjectTree(geany.Plugin):
             self._save_project_tree(model, project_tree_layout_ini)
         return True
         
-    def _menubar_0_File_4_SEPARATOR(self): pass
+    def _menubar_0_File_2_SEPARATOR(self): pass
     
-    def _menubar_0_File_5_Load_Session(self, data):
-        print "_menubar_0_File_5_Load_Session"
+    def _menubar_0_File_5_SEPARATOR(self): pass
+    
+    def _menubar_0_File_6_Load_Session(self, data):
+        print "_menubar__File__Load_Session"
         session_files_ini = self._prompt_for_ini_file("*session*.ini")
         if session_files_ini:
             self._change_base_directory(os.path.dirname(os.path.dirname(session_files_ini))) # strip off .geany/XYZ-session.ini
             self._load_session_files(session_files_ini)
         return True
         
-    def _menubar_0_File_6_Save_Session(self, data):
-        print "_menubar_0_File_6_Save_Session"
+    def _menubar_0_File_1_Save_Session(self, data):
+        print "_menubar__File__Save_Session"
         if self.config_base_directory_is_guess:
             new_config_base_directory, self.config_base_directory_is_guess = self._prompt_for_geany_directory(self.config_base_directory, self.config_sub_directory)
             if not self.config_base_directory_is_guess:
@@ -461,7 +484,7 @@ class ProjectTree(geany.Plugin):
         return True
         
     def _menubar_1_Search_0_Find_in_Project_Files(self, data):
-        print "_menubar_1_Search_0_Find_in_Project_Files"
+        print "_menubar__Search__Find_in_Project_Files"
         return True
         
     #############  menubar functions END #############  
@@ -473,8 +496,8 @@ class ProjectTree(geany.Plugin):
     
     def _popup_0_SEPARATOR(self, data): pass
         
-    def _popup_1_Add_Group(self, data):
-        print "_popup_1_Add_Group"
+    def _popup_4_Add_Group(self, data):
+        print "_popup__Add_Group"
         dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, 
                                         gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL,  "Add Group :")
         prompt = gtk.Entry()
@@ -494,29 +517,25 @@ class ProjectTree(geany.Plugin):
             model.insert_after( parent=None, sibling=iter, row=TreeViewRowGroup(group).row)
         return True
     
-    def _popup_2_Add_Current_File(self, data):
-        print "_popup_2_Add_Current_File"
+    def _popup_1_Add_Current_File(self, data):
+        print "_popup__Add_Current_File"
         doc = geany.document.get_current()
         if doc is not None:
-            print "Document filename= ", doc.file_name
-            file = doc.file_name 
-            if file is not None: 
-                print "self.config_base_directory = %s" % (self.config_base_directory,)
-                print "os.path.dirname(file) = %s" % (os.path.dirname(file),)
-                #file_relative = os.path.join(
-                #                          os.path.relpath(os.path.dirname(file), self.config_base_directory),
-                #                          os.path.basename(file)
-                #                        )
-                file_relative = os.path.relpath(file, self.config_base_directory)
-                print "file_relative = %s" % (file_relative,)
-                model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
-                model.insert_after( parent=None, sibling=iter, row=TreeViewRowFile(file_relative).row)
+            self._add_docs_to_selected([doc])
         return True
         
-    def _popup_4_SEPARATOR(self, data): pass
+    def _popup_2_Add_Open_Files(self, data):
+        print "_popup__Add_Open_Files"
+        docs = geany.document.get_documents_list()
+        self._add_docs_to_selected(docs)
+        return True
+        
+    def _popup_3_SEPARATOR(self, data): pass
     
-    def _popup_5_Rename(self, data):
-        print "_popup_5_Rename"
+    def _popup_5_SEPARATOR(self, data): pass
+    
+    def _popup_6_Rename(self, data):
+        print "_popup__Rename"
         model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
         if iter is None : return True
         text_current = model[iter][TreeViewRow.COL_RAWTEXT]
@@ -544,8 +563,8 @@ class ProjectTree(geany.Plugin):
             model[iter] = row
         return True
         
-    def _popup_6_Remove(self, data):
-        print "_popup_6_Remove"
+    def _popup_7_Remove(self, data):
+        print "_popup__Remove"
         model, iter = self.treeview.get_selection().get_selected() # iter = None if nothing selected
         if iter is None : return True
             
