@@ -101,9 +101,12 @@ export GIT_COMMITTER_EMAIL="$cm"
 # i.e. 
 git filter-branch --env-filter '
 cm="$GIT_COMMITTER_EMAIL"
-if [ "$GIT_COMMITTER_EMAIL" = "andrewsm@changi.herald" ]
+if [ "$GIT_COMMITTER_EMAIL" = "Martin.Andrews@PLATFORMedia.com" ]
 then
 cm="GitHub@mdda.net"
 fi
 export GIT_COMMITTER_EMAIL="$cm"
 '
+
+# Merge backup into current : 
+git update-ref -d refs/original/refs/heads/master
