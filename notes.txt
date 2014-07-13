@@ -73,6 +73,7 @@ Save project on close? :: Not clear whether there's a suitable signal handle to 
 git log --all --format='%aN <%cE>' | sort -u
 
 # Unify authors (so that github totals correct): 
+## Also see : http://stackoverflow.com/a/8444091/929736
 #!/bin/sh
  
 git filter-branch --env-filter '
@@ -99,14 +100,14 @@ export GIT_COMMITTER_NAME="$cn"
 export GIT_COMMITTER_EMAIL="$cm"
 '
 # i.e. 
-git filter-branch --env-filter '
+git filter-branch -f --env-filter '
 cm="$GIT_COMMITTER_EMAIL"
 if [ "$GIT_COMMITTER_EMAIL" = "Martin.Andrews@PLATFORMedia.com" ]
 then
 cm="GitHub@mdda.net"
 fi
 export GIT_COMMITTER_EMAIL="$cm"
-'
+' -- --all
 
 # Merge backup into current : 
 git update-ref -d refs/original/refs/heads/master
