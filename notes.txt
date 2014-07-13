@@ -99,14 +99,16 @@ export GIT_AUTHOR_EMAIL="$am"
 export GIT_COMMITTER_NAME="$cn"
 export GIT_COMMITTER_EMAIL="$cm"
 '
+
 # i.e. 
 git filter-branch -f --env-filter '
 cm="$GIT_COMMITTER_EMAIL"
-if [ "$GIT_COMMITTER_EMAIL" = "Martin.Andrews@PLATFORMedia.com" ]
+if [ "$GIT_AUTHOR_EMAIL" = "andrewsm@changi.herald" ]
 then
 cm="GitHub@mdda.net"
 fi
 export GIT_COMMITTER_EMAIL="$cm"
+export GIT_AUTHOR_EMAIL="$cm"
 ' -- --all
 
 # Merge backup into current : 
