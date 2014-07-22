@@ -135,7 +135,10 @@ As a local user on Fedora, this is done simply by running ```geany```, and makin
 Then :
 
 ```bash
-cd {project-tree directory inside this repository}
+cd {base directory inside this repository}
 ln -s `pwd`/project-tree ~/.config/geany/plugins/geanypy/plugins/
 ```
+
+Geany will need to be restarted for GeanyPy to pick up the new plugin available.
+
 

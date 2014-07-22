@@ -70,7 +70,7 @@ Save project on close? :: Not clear whether there's a suitable signal handle to 
 
 
 # Check authors & emails of git log :
-git log --all --format='%aN <%cE>' | sort -u
+git log --all --format='Author=%aN <%aE>; Committer=%cN <%cE>' | sort -u
 
 # Unify authors (so that github totals correct): 
 ## Also see : http://stackoverflow.com/a/8444091/929736
@@ -100,16 +100,16 @@ export GIT_COMMITTER_NAME="$cn"
 export GIT_COMMITTER_EMAIL="$cm"
 '
 
-# i.e. 
+# i.e. -- to unify both...
 git filter-branch -f --env-filter '
-cm="$GIT_COMMITTER_EMAIL"
-if [ "$GIT_AUTHOR_EMAIL" = "andrewsm@changi.herald" ]
+m="$GIT_AUTHOR_EMAIL"
+if [ "$GIT_AUTHOR_EMAIL" = "Martin.Andrews@PLATFORMedia.com" ]
 then
-cm="GitHub@mdda.net"
+m="GitHub@mdda.net"
 fi
-export GIT_COMMITTER_EMAIL="$cm"
-export GIT_AUTHOR_EMAIL="$cm"
+export GIT_COMMITTER_EMAIL="$m"
+export GIT_AUTHOR_EMAIL="$m"
 ' -- --all
 
-# Merge backup into current : 
-git update-ref -d refs/original/refs/heads/master
+# This appears to require a little forcing...
+git push -f
