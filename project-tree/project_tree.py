@@ -344,15 +344,19 @@ class ProjectTree(geany.Plugin):
         open_files_section = "open-files"
         config.add_section(open_files_section)
         i = 0
-        for doc in geany.document.get_documents_list():
+        #for doc in geany.document.get_documents_list(): # This appears to be in an arbitrary order
+        while True:       
+            doc=geany.document.get_from_page(i)
+            if doc is None:  # Finished list the document tabs
+                break
             file = doc.file_name 
             if file is not None: 
                 file_relative = os.path.relpath(file, self.config_base_directory)
                 at_line = 1
                 scroll_pct = doc.editor.scroll_percent
                 print "SAVING : file_relative:line=pct = %s:%d=%.2f" % (file_relative, at_line, scroll_pct)
-                config.set(open_files_section, "%d" % (i,), "%s:%d" % (file_relative, at_line))
-            i += 10
+                config.set(open_files_section, "%d" % (i*10,), "%s:%d" % (file_relative, at_line))
+            i += 1
 
         with open(config_file, 'w') as fout:
             config.write(fout)
