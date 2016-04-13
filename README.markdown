@@ -132,20 +132,23 @@ First you need to know where GeanyPy stores its plugin directory - and that the 
 
 As a local user on Fedora, this is done simply by running ```geany```, and making sure that the geanypy plugin is installed.
 
-Then :
+Then (for versions < 1.27, which is Fedora<=22):
 
 ```bash
 cd {base directory inside this repository}
 ln -s `pwd`/project-tree ~/.config/geany/plugins/geanypy/plugins/
 ```
 
-Geany will need to be restarted for GeanyPy to pick up the new plugin available.  If it doesn't work (which appears to 
-be the case in Fedora 23, whereas it worked in previous Fedora versions), you'll need to add it to the main geany installation instead :
+Or (for versions >= 1.27, which is Fedora>=23) - because ```GeanyPy``` is now a 'unified' plugin:
+
+```bash
+cd {base directory inside this repository}
+ln -s `pwd`/project-tree/project_tree.py ~/.config/geany/plugins/
+```
+
+Geany will need to be restarted for GeanyPy to pick up the new plugin available.  If it doesn't work, you can also try to add it to the main geany installation instead :
 
 ```bash
 cd {base directory inside this repository}
 sudo ln -s `pwd`/project-tree/project_tree.py /usr/lib64/geany/
 ```
-
-
-
