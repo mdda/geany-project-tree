@@ -113,3 +113,22 @@ export GIT_AUTHOR_EMAIL="$m"
 
 # This appears to require a little forcing...
 git push -f
+
+
+
+su ...
+
+dnf remove geany
+mkdir ~/geany
+cd ~/geany/
+#wget ftp://rpmfind.net/linux/fedora/linux/updates/26/x86_64/g/geany-1.31-1.fc26.x86_64.rpm
+#wget ftp://rpmfind.net/linux/fedora/linux/updates/26/x86_64/g/geany-libgeany-1.31-1.fc26.x86_64.rpm
+#wget ftp://rpmfind.net/linux/fedora/linux/updates/26/x86_64/g/geany-plugins-common-1.31-1.fc26.x86_64.rpm
+#wget ftp://rpmfind.net/linux/fedora/linux/updates/26/x86_64/g/geany-plugins-geanypy-1.31-1.fc26.x86_64.rpm
+
+wget https://www.rpmfind.net/linux/fedora/linux/updates/26/x86_64/Packages/g/geany-1.31-1.fc26.x86_64.rpm
+wget https://www.rpmfind.net/linux/fedora/linux/updates/26/x86_64/Packages/g/geany-libgeany-1.31-1.fc26.x86_64.rpm
+wget https://www.rpmfind.net/linux/fedora/linux/updates/26/x86_64/Packages/g/geany-plugins-common-1.31-1.fc26.x86_64.rpm
+wget https://www.rpmfind.net/linux/fedora/linux/updates/26/x86_64/Packages/g/geany-plugins-geanypy-1.31-1.fc26.x86_64.rpm
+
+dnf localinstall geany*.rpm
