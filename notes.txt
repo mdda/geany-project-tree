@@ -132,3 +132,7 @@ wget https://www.rpmfind.net/linux/fedora/linux/updates/26/x86_64/Packages/g/gea
 wget https://www.rpmfind.net/linux/fedora/linux/updates/26/x86_64/Packages/g/geany-plugins-geanypy-1.31-1.fc26.x86_64.rpm
 
 dnf localinstall geany*.rpm
+
+# Add into /etc/dnf/dnf.conf : 
+exclude=geany*
+
