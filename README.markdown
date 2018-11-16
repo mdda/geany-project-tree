@@ -7,6 +7,11 @@
 >  however if I see that (for instance) [peasy](https://github.com/kugel-/peasy) becomes
 >  viable, I'll update here.
 
+>  OTOH, since [this issue](https://github.com/kugel-/peasy/issues/10) isn't very promising 
+>  (after such a quiet period for ```peasy```), I'm looking at building an extension
+>  for VScode that does the same job (and is backwards compatible with existing ```.project``` and ```.sesssion``` files).
+
+
 
 ## Motivation
 
