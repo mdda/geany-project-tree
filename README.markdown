@@ -11,6 +11,8 @@
 >  (after such a quiet period for ```peasy```), I'm looking at building an extension
 >  for VScode that does the same job (and is backwards compatible with existing ```.project``` and ```.sesssion``` files).
 
+>  As another alternative, I'm having a dig around doing this directly in C++, since 
+>  ```geany``` as an editor is super-familiar, small, and 'works-for-me'...
 
 
 ## Motivation
