@@ -1,6 +1,5 @@
 # Project-Tree plugin for Geany
 
-
 >  Note that this only works for ```geany``` up to version ```1.31```.  
 >  See [this issue](https://github.com/codebrainz/geanypy/issues/48) for more details.
 >  For now, I'm holding back my RPM install to version 1.31 (and not really suffering),
